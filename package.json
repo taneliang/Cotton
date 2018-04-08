@@ -4,11 +4,14 @@
   "description": "Dependency upgrader GitHub app for Yarn projects",
   "main": "handler.js",
   "scripts": {
+    "deploy": "env-cmd .env serverless deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
     "@types/aws-lambda": "0.0.22",
     "@types/node": "^8.0.57",
+    "env-cmd": "^7.0.0",
+    "serverless": "^1.26.1",
     "serverless-webpack": "^4.0.0",
     "ts-loader": "^2.3.7",
     "typescript": "^2.5.2",
