@@ -10,6 +10,7 @@
     "deploy": "env-cmd .env serverless deploy"
   },
   "dependencies": {
+    "@octokit/rest": "^15.2.6",
     "source-map-support": "^0.5.4"
   },
   "devDependencies": {

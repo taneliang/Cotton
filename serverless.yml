@@ -11,6 +11,11 @@ provider:
   runtime: nodejs8.10
   region: ap-southeast-1 # Asia Pacific (Singapore)
 
+custom:
+  webpack:
+    includeModules: true
+    packager: 'yarn'
+
 functions:
   githubWebhookListener:
     handler: src/handlers/githubWebhook.githubWebhookListener
