@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "tslint --project . 'src/**/*.ts'",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "serverless offline",
+    "start": "env-cmd .env serverless offline start",
     "deploy": "env-cmd .env serverless deploy"
   },
   "dependencies": {

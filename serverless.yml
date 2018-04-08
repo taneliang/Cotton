@@ -12,9 +12,15 @@ provider:
   region: ap-southeast-1 # Asia Pacific (Singapore)
 
 functions:
-  hello:
-    handler: src/handlers/handler.hello
+  githubWebhookListener:
+    handler: src/handlers/githubWebhook.githubWebhookListener
+    events:
+      - http:
+          method: post
+          path: githubWebhookListener
+  restTrigger:
+    handler: src/handlers/restTrigger.restTrigger
     events:
       - http:
           method: get
-          path: hello
+          path: restTrigger
