@@ -10,4 +10,4 @@ export const hello: Handler = (event: APIGatewayEvent, context: Context, cb: Cal
   };
 
   cb(null, response);
-}
+};
