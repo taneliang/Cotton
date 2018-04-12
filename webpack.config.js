@@ -1,6 +1,7 @@
 const path = require('path');
 const slsw = require('serverless-webpack');
 const nodeExternals = require('webpack-node-externals');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: slsw.lib.entries,
@@ -32,6 +33,7 @@ module.exports = {
       },
     ],
   },
+  plugins: [new CopyWebpackPlugin(['gh_priv_key.pem'])],
   output: {
     libraryTarget: 'commonjs2',
     path: path.join(__dirname, '.webpack'),
