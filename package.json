@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^0.0.35",
-    "@types/bluebird": "^3.5.20",
+    "@types/bluebird-global": "^3.5.5",
     "@types/jsonwebtoken": "^7.2.6",
     "@types/lodash": "^4.14.106",
     "@types/node": "^9.6.2",

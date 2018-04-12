@@ -21,6 +21,5 @@ export default function generateGitHubToken() {
     algorithm: 'RS256',
   };
 
-  const token = jwt.sign(payload, cert, options);
-  return token;
+  return jwt.sign(payload, cert, options);
 }

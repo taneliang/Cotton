@@ -1,9 +1,11 @@
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
-import * as bluebird from 'bluebird';
 import * as Octokit from '@octokit/rest';
 import { zip } from 'lodash';
 
 import generateGitHubToken from '../auth/generateToken';
+
+import * as bluebird from 'bluebird';
+global.Promise = bluebird;
 
 async function fetchInstallationIds(octokit: Octokit) {
   const installations = await octokit.apps.getInstallations({});
@@ -11,7 +13,7 @@ async function fetchInstallationIds(octokit: Octokit) {
 }
 
 function fetchTokensForInstallations(installationIds: string[], octokit: Octokit) {
-  return bluebird.map(installationIds, async (installationId: string) => {
+  return Promise.map(installationIds, async (installationId: string) => {
     const tokenResult = await octokit.apps.createInstallationToken({
       installation_id: installationId,
     });
@@ -58,7 +60,7 @@ async function upgradeInstallation(installationId: string, token: string) {
 
   // Find and upgrade all repos in this installation
   const repos = await octokit.apps.getInstallationRepositories({});
-  const result = await bluebird.map(repos.data.repositories, (repoDetails: any) =>
+  const result = await Promise.map(repos.data.repositories, (repoDetails: any) =>
     upgradeRepository(repoDetails, octokit),
   );
   return result;
@@ -82,7 +84,7 @@ export const restTrigger: Handler = async (
     const installationIdTokenPairs = zip(installationIds, tokens);
 
     // Upgrade all repos in all installations
-    const result = await bluebird.map(installationIdTokenPairs, async (pair: [string, string]) =>
+    const result = await Promise.map(installationIdTokenPairs, async (pair: [string, string]) =>
       upgradeInstallation(pair[0], pair[1]),
     );
 

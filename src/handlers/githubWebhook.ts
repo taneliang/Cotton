@@ -8,6 +8,8 @@ function signRequestBody(key: string, body: string | null) {
     .digest('hex')}`;
 }
 
+const responseHeaders = { 'Content-Type': 'text/plain' };
+
 export const githubWebhookListener: Handler = (
   event: APIGatewayEvent,
   context: Context,
@@ -20,7 +22,7 @@ export const githubWebhookListener: Handler = (
     errMsg = "Must provide a 'GITHUB_WEBHOOK_SECRET' env variable";
     return callback(null, {
       statusCode: 401,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: responseHeaders,
       body: errMsg,
     });
   }
@@ -32,7 +34,7 @@ export const githubWebhookListener: Handler = (
     errMsg = 'No X-Hub-Signature found on request';
     return callback(null, {
       statusCode: 401,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: responseHeaders,
       body: errMsg,
     });
   }
@@ -42,7 +44,7 @@ export const githubWebhookListener: Handler = (
     errMsg = 'No X-Github-Event found on request';
     return callback(null, {
       statusCode: 422,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: responseHeaders,
       body: errMsg,
     });
   }
@@ -52,7 +54,7 @@ export const githubWebhookListener: Handler = (
     errMsg = 'No X-Github-Delivery found on request';
     return callback(null, {
       statusCode: 401,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: responseHeaders,
       body: errMsg,
     });
   }
@@ -62,7 +64,7 @@ export const githubWebhookListener: Handler = (
     errMsg = "X-Hub-Signature incorrect. Github webhook token doesn't match";
     return callback(null, {
       statusCode: 401,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: responseHeaders,
       body: errMsg,
     });
   }
