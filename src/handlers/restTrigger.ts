@@ -43,8 +43,7 @@ export function findProjectRootDirs(packageJsonPaths: string[], yarnLockPaths: s
   const yarnLockDirs = yarnLockPaths.map(dirname);
 
   // Filter out package.json dirs that don't have a corresponding yarn.lock dir
-  // TODO: Use _.intersection
-  return packageJsonDirs.filter((dir: string) => yarnLockDirs.includes(dir));
+  return _.intersection(packageJsonDirs, yarnLockDirs);
 }
 
 // Compute paths to all files in all project directories
