@@ -79,12 +79,15 @@ export const restTrigger: Handler = async (
 
   try {
     // Get installation IDs and access tokens
-    const installationIds = await fetchInstallationIds(octokit);
-    const tokens = await fetchTokensForInstallations(installationIds, octokit);
-    const installationIdTokenPairs = zip(installationIds, tokens);
+    const installationIds: string[] = await fetchInstallationIds(octokit);
+    const tokens: string[] = await fetchTokensForInstallations(installationIds, octokit);
+
+    // Pair up installation IDs with access tokens
+    if (installationIds.length !== tokens.length) throw 'Not all installations have tokens';
+    const installationIdTokenPairs = <[string, string][]>zip(installationIds, tokens);
 
     // Upgrade all repos in all installations
-    const result = await Promise.map(installationIdTokenPairs, async (pair: [string, string]) =>
+    const result = await Promise.map(installationIdTokenPairs, (pair: [string, string]) =>
       upgradeInstallation(pair[0], pair[1]),
     );
 
