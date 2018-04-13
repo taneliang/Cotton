@@ -1,12 +1,26 @@
-import { dirname } from 'path';
+import { dirname, join } from 'path';
+import { writeFile } from 'fs';
+import { promisify } from 'util';
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
-import { zip } from 'lodash';
+import * as _ from 'lodash';
+import 'lodash.product';
+import * as mkdirp from 'mkdirp';
 
 import generateGitHubToken from '../auth/generateToken';
 
 import * as bluebird from 'bluebird';
 global.Promise = bluebird;
+
+type PathPair = {
+  repoPath: string;
+  localPath: string;
+};
+
+// Using 2 different versions of promisify to get around compile
+// error: TS2554: Expected X arguments, but got Y.
+const mkdirpAsync = Promise.promisify(mkdirp);
+const writeFileAsync = promisify(writeFile);
 
 async function fetchInstallationIds(octokit: Octokit) {
   const installations = await octokit.apps.getInstallations({});
@@ -29,7 +43,30 @@ export function findProjectRootDirs(packageJsonPaths: string[], yarnLockPaths: s
   const yarnLockDirs = yarnLockPaths.map(dirname);
 
   // Filter out package.json dirs that don't have a corresponding yarn.lock dir
+  // TODO: Use _.intersection
   return packageJsonDirs.filter((dir: string) => yarnLockDirs.includes(dir));
+}
+
+// Compute paths to all files in all project directories
+export function getFilePaths(projectDirs: PathPair[], filenames: string[]): PathPair[] {
+  return (_ as any)
+    .product(projectDirs, filenames) // Get cartesian product of dirs and file names
+    .map(([dirPath, file]: [PathPair, string]) => ({
+      // Join filenames to dirs
+      repoPath: join(dirPath.repoPath, file),
+      localPath: join(dirPath.localPath, file),
+    }));
+}
+
+// Fetch all files in owner/repo and save to disk
+function fetchFiles(owner: string, repo: string, filePaths: PathPair[], octokit: Octokit) {
+  return Promise.map(filePaths, (filePath: PathPair) =>
+    octokit.repos
+      .getContent({ owner, repo, path: filePath.repoPath })
+      .then((content: any) =>
+        writeFileAsync(filePath.localPath, content.data.content, content.data.encoding),
+      ),
+  );
 }
 
 // Upgrade a repository. octokit should be authenticated with token to access repo.
@@ -46,17 +83,24 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   ]);
 
   // Filter out all package.jsons without a corresponding yarn.lock and vice versa
+  const upgradeRoot = join('/tmp', repoDetails.id.toString());
   const projDirPaths = findProjectRootDirs(
     packageJsons.data.items.map((i: any) => i.path),
     yarnLocks.data.items.map((i: any) => i.path),
-  );
+  ).map((repoPath: string) => ({
+    repoPath, // Path in repo (provided by GitHub)
+    localPath: join(upgradeRoot, repoPath), // Local download path
+  }));
 
   if (projDirPaths.length === 0) {
     console.log('No package.json + yarn.lock pairs in', repoDetails.full_name);
     return {};
   }
 
-  // TODO: Download all package.jsons and yarn.lock pairs and store them in project directories
+  // Download all package.jsons and yarn.lock pairs and store them in project directories
+  await Promise.map(projDirPaths, (dir: PathPair) => mkdirpAsync(dir.localPath, {}));
+  const filePaths = getFilePaths(projDirPaths, ['package.json', 'yarn.lock']);
+  await fetchFiles(repoDetails.owner.login, repoDetails.name, filePaths, octokit);
 
   // TODO: Upgrade all package.jsons
 
@@ -66,7 +110,7 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 
   // TODO: Submit or edit PR
 
-  const result = { packageJsons, yarnLocks };
+  const result = { projDirPaths, filePaths };
   return result;
 }
 
@@ -104,7 +148,7 @@ export const restTrigger: Handler = async (
 
     // Pair up installation IDs with access tokens
     if (installationIds.length !== tokens.length) throw 'Not all installations have tokens';
-    const installationIdTokenPairs = <[string, string][]>zip(installationIds, tokens);
+    const installationIdTokenPairs = <[string, string][]>_.zip(installationIds, tokens);
 
     // Upgrade all repos in all installations
     const result = await Promise.map(installationIdTokenPairs, (pair: [string, string]) =>

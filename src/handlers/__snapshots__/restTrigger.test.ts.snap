@@ -1,0 +1,70 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`getFilePaths should return cartesian product of dirs and files 1`] = `
+Array [
+  Object {
+    "localPath": ".",
+    "repoPath": ".",
+  },
+  Object {
+    "localPath": "/fonts.jpg",
+    "repoPath": "/fonts.jpg",
+  },
+  Object {
+    "localPath": "deep/ocean.txt",
+    "repoPath": "deep/ocean.txt",
+  },
+  Object {
+    "localPath": "../above.jpg",
+    "repoPath": "../above.jpg",
+  },
+  Object {
+    "localPath": "../",
+    "repoPath": "../",
+  },
+  Object {
+    "localPath": "../fonts.jpg",
+    "repoPath": "../fonts.jpg",
+  },
+  Object {
+    "localPath": "../deep/ocean.txt",
+    "repoPath": "../deep/ocean.txt",
+  },
+  Object {
+    "localPath": "../../above.jpg",
+    "repoPath": "../../above.jpg",
+  },
+  Object {
+    "localPath": "dirp",
+    "repoPath": "dirp",
+  },
+  Object {
+    "localPath": "dirp/fonts.jpg",
+    "repoPath": "dirp/fonts.jpg",
+  },
+  Object {
+    "localPath": "dirp/deep/ocean.txt",
+    "repoPath": "dirp/deep/ocean.txt",
+  },
+  Object {
+    "localPath": "above.jpg",
+    "repoPath": "above.jpg",
+  },
+  Object {
+    "localPath": "/dirp/",
+    "repoPath": "/dirp/",
+  },
+  Object {
+    "localPath": "/dirp/fonts.jpg",
+    "repoPath": "/dirp/fonts.jpg",
+  },
+  Object {
+    "localPath": "/dirp/deep/ocean.txt",
+    "repoPath": "/dirp/deep/ocean.txt",
+  },
+  Object {
+    "localPath": "/above.jpg",
+    "repoPath": "/above.jpg",
+  },
+]
+`;

@@ -1,4 +1,4 @@
-import { findProjectRootDirs } from './restTrigger';
+import { findProjectRootDirs, getFilePaths } from './restTrigger';
 
 describe(findProjectRootDirs, () => {
   test('should return dirs with both package.json and yarn.lock', () => {
@@ -13,9 +13,19 @@ describe(findProjectRootDirs, () => {
   test('should not return dirs with only one file', () => {
     expect(
       findProjectRootDirs(
-        ['package.json', 'one/package.json'],
+        ['package.json', 'one/package.json', 'two/package.json/scam'],
         ['../yarn.lock', 'two/yarn.lock', 'somewhere/yarn.lock'],
       ),
     ).toEqual([]);
+  });
+});
+
+describe(getFilePaths, () => {
+  test('should return cartesian product of dirs and files', () => {
+    const rawDirs = ['', '../', 'dirp', '/dirp/'];
+    const pairDirs = rawDirs.map((dir: string) => ({ repoPath: dir, localPath: dir }));
+    const files = ['', '/fonts.jpg', 'deep/ocean.txt', '../above.jpg'];
+    const paths = getFilePaths(pairDirs, files);
+    expect(paths).toMatchSnapshot();
   });
 });

@@ -15,6 +15,8 @@
     "bluebird": "^3.5.1",
     "jsonwebtoken": "^8.2.1",
     "lodash": "^4.17.5",
+    "lodash.product": "^18.1.16",
+    "mkdirp": "^0.5.1",
     "source-map-support": "^0.5.4"
   },
   "devDependencies": {
@@ -23,6 +25,7 @@
     "@types/jest": "^22.2.3",
     "@types/jsonwebtoken": "^7.2.6",
     "@types/lodash": "^4.14.106",
+    "@types/mkdirp": "^0.5.2",
     "@types/node": "^9.6.2",
     "copy-webpack-plugin": "^4.5.1",
     "env-cmd": "^7.0.0",
