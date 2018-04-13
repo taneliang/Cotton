@@ -5,7 +5,8 @@
   "main": "handler.js",
   "scripts": {
     "lint": "tslint --project . 'src/**/*.ts'",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "start": "env-cmd .env serverless offline start",
     "deploy": "env-cmd .env serverless deploy"
   },
@@ -19,15 +20,18 @@
   "devDependencies": {
     "@types/aws-lambda": "^0.0.35",
     "@types/bluebird-global": "^3.5.5",
+    "@types/jest": "^22.2.3",
     "@types/jsonwebtoken": "^7.2.6",
     "@types/lodash": "^4.14.106",
     "@types/node": "^9.6.2",
     "copy-webpack-plugin": "^4.5.1",
     "env-cmd": "^7.0.0",
+    "jest": "^22.4.3",
     "prettier": "^1.11.1",
     "serverless": "^1.26.1",
     "serverless-offline": "^3.20.1",
     "serverless-webpack": "^5.1.1",
+    "ts-jest": "^22.4.2",
     "ts-loader": "^4.2.0",
     "tslint": "^5.9.1",
     "tslint-config-prettier": "^1.10.0",
