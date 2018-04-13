@@ -1,3 +1,4 @@
+import { dirname } from 'path';
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
 import { zip } from 'lodash';
@@ -21,6 +22,16 @@ function fetchTokensForInstallations(installationIds: string[], octokit: Octokit
   });
 }
 
+// Return directories where both package.json and yarn.lock are present
+export function findProjectRootDirs(packageJsonPaths: string[], yarnLockPaths: string[]): string[] {
+  // Get dir paths without filenames
+  const packageJsonDirs = packageJsonPaths.map(dirname);
+  const yarnLockDirs = yarnLockPaths.map(dirname);
+
+  // Filter out package.json dirs that don't have a corresponding yarn.lock dir
+  return packageJsonDirs.filter((dir: string) => yarnLockDirs.includes(dir));
+}
+
 // Upgrade a repository. octokit should be authenticated with token to access repo.
 async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   console.log('Upgrading repository', repoDetails.full_name);
@@ -34,7 +45,16 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
     octokit.search.code({ q: query('yarn.lock') }),
   ]);
 
-  // TODO: Filter out all package.jsons without a corresponding yarn.lock and vice versa
+  // Filter out all package.jsons without a corresponding yarn.lock and vice versa
+  const projDirPaths = findProjectRootDirs(
+    packageJsons.data.items.map((i: any) => i.path),
+    yarnLocks.data.items.map((i: any) => i.path),
+  );
+
+  if (projDirPaths.length === 0) {
+    console.log('No package.json + yarn.lock pairs in', repoDetails.full_name);
+    return {};
+  }
 
   // TODO: Download all package.jsons and yarn.lock pairs and store them in project directories
 
