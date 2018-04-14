@@ -1,5 +1,6 @@
 import { dirname, join } from 'path';
 import { readFile, writeFile } from 'fs';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
@@ -32,6 +33,7 @@ const cottonBranch = 'cotton/upgrade';
 const mkdirpAsync = Promise.promisify(mkdirp);
 const readFileAsync = promisify(readFile);
 const writeFileAsync = promisify(writeFile);
+const execAsync = promisify(exec);
 
 async function fetchInstallationIds(octokit: Octokit) {
   const installations = await octokit.apps.getInstallations({});
@@ -102,11 +104,8 @@ async function upgradeProject(rootDir: string) {
   // Read package.json
   const packageJsonPath = join(rootDir, 'package.json');
   const packageJson = await readFileAsync(packageJsonPath, 'utf-8');
-  // console.log('before', packageJsonString);
 
-  // TODO: Calculate diff
-  // const package = JSON.parse(packageJson) as PackageJson;
-
+  // Upgrade packages
   // TODO: Ensure that custom packages are ignored
   const upgradedPackage = await ncu.run({
     packageFile: packageJsonPath,
@@ -117,9 +116,15 @@ async function upgradeProject(rootDir: string) {
 
   // Save new package.json
   // TODO: Preserve formatting (only replace necessary bits? Prettier?)
-  await writeFileAsync(packageJsonPath, JSON.stringify(upgradedPackage, null, 2), 'utf-8');
+  await writeFileAsync(packageJsonPath, JSON.stringify(upgradedPackage, null, 2) + '\n', 'utf-8');
 
-  // TODO: Run yarn to update yarn.lock
+  // TODO: Calculate diff
+  // const package = JSON.parse(packageJson) as PackageJson;
+
+  // TODO: Abort if nothing was upgraded
+
+  // Run yarn to update yarn.lock
+  await execAsync('yarn install', { cwd: rootDir });
 
   // TODO: Return diff
   return upgradedPackage;
@@ -211,8 +216,11 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   const filePaths = getFilePaths(projDirPaths, ['package.json', 'yarn.lock']);
   await fetchFiles(repoDetails.owner.login, repoDetails.name, filePaths, octokit);
 
-  // TODO: Upgrade projects
-  await Promise.map(projDirPaths, (projDir: PathPair) => upgradeProject(projDir.localPath));
+  // Upgrade projects
+  const upgradeSummary = await Promise.map(projDirPaths, (projDir: PathPair) =>
+    upgradeProject(projDir.localPath),
+  );
+  console.log('US', upgradeSummary);
 
   // TODO: Abort if nothing was upgraded
 
