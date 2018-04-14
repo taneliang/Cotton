@@ -10,11 +10,13 @@ provider:
   name: aws
   runtime: nodejs8.10
   region: ap-southeast-1 # Asia Pacific (Singapore)
-  timeout: 40
+  timeout: 100
 
 custom:
   webpack:
-    includeModules: true
+    includeModules:
+      forceInclude:
+        - yarn
     packager: 'yarn'
 
 functions:

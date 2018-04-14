@@ -18,7 +18,8 @@
     "lodash.product": "^18.1.16",
     "mkdirp": "^0.5.1",
     "npm-check-updates": "^2.14.1",
-    "source-map-support": "^0.5.4"
+    "source-map-support": "^0.5.4",
+    "yarn": "^1.5.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^0.0.35",

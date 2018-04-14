@@ -14,6 +14,12 @@ import generateGitHubToken from '../auth/generateToken';
 import * as bluebird from 'bluebird';
 global.Promise = bluebird;
 
+// Add node_modules/yarn/bin to PATH so that we can execute yarn.
+// Not adding node_modules/.bin as the yarn script tries to load ../lib/cli,
+// which cannot be found in node_modules/.bin.
+process.env['PATH'] =
+  process.env['PATH'] + ':' + process.env['LAMBDA_TASK_ROOT'] + '/node_modules/yarn/bin/';
+
 type PathPair = {
   repoPath: string;
   localPath: string;
@@ -124,7 +130,7 @@ async function upgradeProject(rootDir: string) {
   // TODO: Abort if nothing was upgraded
 
   // Run yarn to update yarn.lock
-  await execAsync('yarn install', { cwd: rootDir });
+  await execAsync('yarn install --ignore-scripts', { cwd: rootDir });
 
   // TODO: Return diff
   return upgradedPackage;
