@@ -2,6 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "sourceMap": true,
+    "noImplicitAny": false,
     "lib": ["esnext"]
   }
 }
