@@ -25,6 +25,8 @@ type PackageJson = {
   devDependencies: { readonly [index: string]: string } | undefined;
 };
 
+const cottonBranch = 'cotton/upgrade';
+
 // Using 2 different versions of promisify to get around compile
 // error: TS2554: Expected X arguments, but got Y.
 const mkdirpAsync = Promise.promisify(mkdirp);
@@ -43,6 +45,24 @@ function fetchTokensForInstallations(installationIds: string[], octokit: Octokit
     });
     return tokenResult.data.token;
   });
+}
+
+async function fetchBranchData(owner: string, repo: string, branch: string, octokit: Octokit) {
+  const ref = await octokit.gitdata
+    .getReference({ owner, repo, ref: `heads/${branch}` })
+    // cotton's branch may not exist. Catch error and return undefined
+    .catch((e) => {
+      if (e.code !== 404) throw e;
+      return null;
+    });
+  if (!ref) return null;
+
+  const refSha = ref.data.object.sha;
+
+  const commit = await octokit.repos.getCommit({ owner, repo, sha: refSha });
+  const commitSha = commit.data.sha;
+  const treeSha = commit.data.commit.tree.sha;
+  return { refSha, commitSha, treeSha };
 }
 
 // Return directories where both package.json and yarn.lock are present
@@ -105,11 +125,64 @@ async function upgradeProject(rootDir: string) {
   return upgradedPackage;
 }
 
+async function commitFiles(owner: string, repo: string, filePaths: PathPair[], octokit: Octokit) {
+  // Fetch master branch data for committing
+  const masterBranchData = await fetchBranchData(owner, repo, 'master', octokit);
+
+  if (!masterBranchData) {
+    console.log(owner + '/' + repo, 'does not have a master branch!');
+    throw 'No master branch found in ' + owner + '/' + repo;
+  }
+
+  // Upload all files as blobs
+  // TODO: Don't commit unchanged files (optional optimization)
+  const createdBlobs = await Promise.map(filePaths, (path: PathPair) =>
+    readFileAsync(path.localPath, 'base64').then((content: string) =>
+      octokit.gitdata.createBlob({
+        owner,
+        repo,
+        content,
+        encoding: 'base64',
+      }),
+    ),
+  );
+
+  // Create tree from blobs
+  const tree = filePaths.map((path: PathPair, idx: number) => ({
+    path: path.repoPath,
+    sha: createdBlobs[idx].data.sha,
+    mode: '100644', // blob
+    type: 'blob',
+  }));
+
+  const createdTree = await octokit.gitdata.createTree({
+    owner,
+    repo,
+    tree,
+    base_tree: masterBranchData.treeSha,
+  });
+
+  // Create commit
+  const newCommit = await octokit.gitdata.createCommit({
+    owner,
+    repo,
+    message: 'Upgrade all dependencies',
+    tree: createdTree.data.sha,
+    parents: [masterBranchData.commitSha],
+  });
+
+  // TODO: Create cotton branch if it doesn't exist
+
+  // TODO: Update cotton branch HEAD
+
+  return newCommit.data.sha;
+}
+
 // Upgrade a repository. octokit should be authenticated with token to access repo.
 async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   console.log('Upgrading repository', repoDetails.full_name);
 
-  // TODO: Find existing PR if present. Branches?
+  // TODO: Abort if foreign commits present in PR. https://octokit.github.io/rest.js/#api-PullRequests-getCommits
 
   // Get paths to all package.json and yarn.lock files
   const query = (filename: string) => `filename:${filename} repo:${repoDetails.full_name}`;
@@ -141,38 +214,19 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   // TODO: Upgrade projects
   await Promise.map(projDirPaths, (projDir: PathPair) => upgradeProject(projDir.localPath));
 
-  // TODO: Commit all files. Gotta fetch new SHAs I think.
-  // TODO: Don't commit unchanged files.
-  const fileDetailsKeyedByPath = _.keyBy(
-    [...packageJsons.data.items, ...yarnLocks.data.items],
-    'path',
-  );
-  const fileContents = await Promise.map(filePaths, (path: PathPair) =>
-    readFileAsync(path.localPath, 'base64'),
-  );
-  const filesToCommit = filePaths.map((path: PathPair, idx: number) => ({
-    ...path,
-    sha: fileDetailsKeyedByPath[path.repoPath].sha,
-    contents: fileContents[idx],
-  }));
+  // TODO: Abort if nothing was upgraded
 
-  await Promise.all(
-    filesToCommit.map((file: PathPair & { sha: string; contents: string }) => {
-      console.log('Upgrading file', file.repoPath, file.sha);
-      return octokit.repos.updateFile({
-        owner: repoDetails.owner.login,
-        repo: repoDetails.name,
-        path: file.repoPath,
-        message: `Upgrade ${file.repoPath}`,
-        content: file.contents,
-        sha: file.sha,
-      });
-    }),
+  // Commit files
+  const commitSha = await commitFiles(
+    repoDetails.owner.login,
+    repoDetails.name,
+    filePaths,
+    octokit,
   );
 
-  // TODO: Submit or edit PR
+  // TODO: Create or edit PR
 
-  const result = { fileDetailsKeyedByPath, filesToCommit, projDirPaths, filePaths };
+  const result = { commitSha, projDirPaths, filePaths };
   return result;
 }
 
@@ -201,7 +255,7 @@ export const restTrigger: Handler = async (
   const octokit = new Octokit();
   octokit.authenticate({ type: 'integration', token: generateGitHubToken() });
 
-  let response = null;
+  let response: any | null = null;
 
   try {
     // Get installation IDs and access tokens
