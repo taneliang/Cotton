@@ -17,6 +17,7 @@
     "lodash": "^4.17.5",
     "lodash.product": "^18.1.16",
     "mkdirp": "^0.5.1",
+    "npm-check-updates": "^2.14.1",
     "source-map-support": "^0.5.4"
   },
   "devDependencies": {
