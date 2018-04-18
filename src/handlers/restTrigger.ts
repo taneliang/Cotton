@@ -38,6 +38,7 @@ type PackageJson = {
 };
 
 type DependencyDiff = { [index: string]: { original: string; upgraded: string } };
+type PackageDiff = { [index: string]: DependencyDiff };
 
 const cottonBranch = 'cotton/upgrade';
 
@@ -139,10 +140,7 @@ function fetchFiles(owner: string, repo: string, filePaths: PathPair[], octokit:
 }
 
 // Diff dependencies in 2 packages
-export function diffDependencies(
-  oldPackage: PackageJson,
-  newPackage: PackageJson,
-): { [index: string]: DependencyDiff } {
+export function diffDependencies(oldPackage: PackageJson, newPackage: PackageJson): PackageDiff {
   const dependencyKeys = [
     'dependencies',
     'devDependencies',
@@ -166,7 +164,7 @@ export function diffDependencies(
 
   const allDiffs = _.zipObject(dependencyKeys, diffsForDepTypes);
   // Remove keys with undefined values
-  return _.pickBy(allDiffs, _.negate(_.isEmpty)) as { [index: string]: DependencyDiff };
+  return _.pickBy(allDiffs, _.negate(_.isEmpty)) as PackageDiff;
 }
 
 // Upgrade project at rootDir (which must contain a package.json and yarn.lock).
@@ -280,7 +278,7 @@ async function commitFiles(owner: string, repo: string, filePaths: PathPair[], o
 function createOrUpdatePR(
   owner: string,
   repo: string,
-  upgradeDiff: any,
+  upgradeDiff: any, //{ [index: string]: PackageDiff },
   prData: any | null,
   octokit: Octokit,
 ) {
@@ -345,15 +343,19 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   await fetchFiles(owner, repo, filePaths, octokit);
 
   // Upgrade projects
-  const rawUpgradeSummary = await Promise.map(projDirPaths, (projDir: PathPair) =>
+  const upgradeDiffs = await Promise.map(projDirPaths, (projDir: PathPair) =>
     upgradeProject(projDir.localPath),
   );
-  // Remove projects in this repo that weren't upgraded
-  const upgradeSummary = _.filter(rawUpgradeSummary);
+  // Zip project dirs and upgrade diffs, then
+  // remove projects in this repo that weren't upgraded
+  const upgradeSummary = _.filter(
+    _.zipObject(projDirPaths.map((path: PathPair) => path.repoPath), upgradeDiffs),
+  );
 
   // Abort if nothing was upgraded
-  if (upgradeSummary.length === 0) {
+  if (Object.keys(upgradeSummary).length === 0) {
     console.log('Nothing to upgrade for', repoDetails.full_name);
+    // TODO: Close open PR if present
     return null;
   }
 
