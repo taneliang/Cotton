@@ -13,6 +13,7 @@
   "dependencies": {
     "@octokit/rest": "^15.2.6",
     "bluebird": "^3.5.1",
+    "deep-diff": "^0.3.8",
     "jsonwebtoken": "^8.2.1",
     "lodash": "^4.17.5",
     "lodash.product": "^18.1.16",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@types/aws-lambda": "^0.0.35",
     "@types/bluebird-global": "^3.5.5",
+    "@types/deep-diff": "^0.0.31",
     "@types/jest": "^22.2.3",
     "@types/jsonwebtoken": "^7.2.6",
     "@types/lodash": "^4.14.106",

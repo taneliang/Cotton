@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
+import { diff } from 'deep-diff';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import 'lodash.product';
@@ -25,12 +26,18 @@ type PathPair = {
   localPath: string;
 };
 
+type Dependencies = { readonly [index: string]: string };
+
 type PackageJson = {
   name: string;
   version: string;
-  dependencies: { readonly [index: string]: string } | undefined;
-  devDependencies: { readonly [index: string]: string } | undefined;
+  dependencies?: Dependencies;
+  devDependencies?: Dependencies;
+  peerDependencies?: Dependencies;
+  optionalDependencies?: Dependencies;
 };
+
+type DependencyDiff = { [index: string]: { original: string; upgraded: string } };
 
 const cottonBranch = 'cotton/upgrade';
 
@@ -105,14 +112,54 @@ function fetchFiles(owner: string, repo: string, filePaths: PathPair[], octokit:
   );
 }
 
-// TODO: Handle ignored packages
+// Diff dependencies in 2 packages
+export function diffDependencies(
+  oldPackage: PackageJson,
+  newPackage: PackageJson,
+): { [index: string]: DependencyDiff } {
+  const dependencyKeys = [
+    'dependencies',
+    'devDependencies',
+    'peerDependencies',
+    'optionalDependencies',
+  ];
+
+  // Generate diffs for each dependencyKey
+  const diffsForDepTypes: DependencyDiff[] = _.map(dependencyKeys, (key: string) => {
+    const diffArray = diff(oldPackage[key] || {}, newPackage[key] || {}) || [];
+    const transformedDiff = diffArray.map((diff) => ({
+      // Assume diff is an edit, and that path only has 1 element (dep name).
+      [diff.path[0]]: {
+        original: diff.lhs,
+        upgraded: diff.rhs,
+      },
+    }));
+    // Merge array of per-package diffs
+    return _.assign({}, ...transformedDiff);
+  });
+
+  const allDiffs = _.zipObject(dependencyKeys, diffsForDepTypes);
+  // Remove keys with undefined values
+  return _.pickBy(allDiffs, _.negate(_.isEmpty)) as { [index: string]: DependencyDiff };
+}
+
+// Upgrade project at rootDir (which must contain a package.json and yarn.lock).
+// If packages were updated, returns an upgrade diff object, else returns null.
 async function upgradeProject(rootDir: string) {
-  // Read package.json
   const packageJsonPath = join(rootDir, 'package.json');
-  const packageJson = await readFileAsync(packageJsonPath, 'utf-8');
+  const readPackageJson = async () => {
+    const packageJson = await readFileAsync(packageJsonPath, 'utf-8');
+    return JSON.parse(packageJson) as PackageJson;
+  };
+
+  // Read package.json
+  const oldPackage = await readPackageJson();
+
+  // TODO: Manually undo previous package upgrade
 
   // Upgrade packages
   // TODO: Ensure that custom packages are ignored
+  // TODO: Set rejected (ignored) packages
   const upgradedPackage = await ncu.run({
     packageFile: packageJsonPath,
     silent: true,
@@ -120,20 +167,21 @@ async function upgradeProject(rootDir: string) {
     upgradeAll: true,
   });
 
+  // Calculate diff
+  const upgradeDiff = diffDependencies(oldPackage, upgradedPackage);
+
+  // Abort if nothing was upgraded
+  if (_.isEmpty(upgradeDiff)) return null;
+
   // Save new package.json
   // TODO: Preserve formatting (only replace necessary bits? Prettier?)
   await writeFileAsync(packageJsonPath, JSON.stringify(upgradedPackage, null, 2) + '\n', 'utf-8');
 
-  // TODO: Calculate diff
-  // const package = JSON.parse(packageJson) as PackageJson;
-
-  // TODO: Abort if nothing was upgraded
-
   // Run yarn to update yarn.lock
   await execAsync('yarn install --ignore-scripts', { cwd: rootDir });
 
-  // TODO: Return diff
-  return upgradedPackage;
+  // Return diff
+  return upgradeDiff;
 }
 
 async function commitFiles(owner: string, repo: string, filePaths: PathPair[], octokit: Octokit) {
@@ -223,12 +271,17 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   await fetchFiles(repoDetails.owner.login, repoDetails.name, filePaths, octokit);
 
   // Upgrade projects
-  const upgradeSummary = await Promise.map(projDirPaths, (projDir: PathPair) =>
+  const rawUpgradeSummary = await Promise.map(projDirPaths, (projDir: PathPair) =>
     upgradeProject(projDir.localPath),
   );
-  console.log('US', upgradeSummary);
+  // Remove projects in this repo that weren't upgraded
+  const upgradeSummary = _.filter(rawUpgradeSummary);
 
-  // TODO: Abort if nothing was upgraded
+  // Abort if nothing was upgraded
+  if (upgradeSummary.length === 0) {
+    console.log('Nothing to upgrade for', repoDetails.full_name);
+    return null;
+  }
 
   // Commit files
   const commitSha = await commitFiles(
@@ -240,7 +293,7 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 
   // TODO: Create or edit PR
 
-  const result = { commitSha, projDirPaths, filePaths };
+  const result = { commitSha, upgradeSummary, projDirPaths };
   return result;
 }
 
@@ -253,6 +306,7 @@ async function upgradeInstallation(installationId: string, token: string) {
   octokit.authenticate({ type: 'token', token });
 
   // Find and upgrade all repos in this installation
+  // TODO: Split repo upgrades into individual lambdas
   const repos = await octokit.apps.getInstallationRepositories({});
   const result = await Promise.map(repos.data.repositories, (repoDetails: any) =>
     upgradeRepository(repoDetails, octokit),
@@ -287,9 +341,7 @@ export const restTrigger: Handler = async (
 
     response = {
       statusCode: 200,
-      body: JSON.stringify({
-        result,
-      }),
+      body: JSON.stringify(result),
     };
   } catch (e) {
     return callback(e);
