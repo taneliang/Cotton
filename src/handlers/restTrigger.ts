@@ -230,9 +230,22 @@ async function commitFiles(owner: string, repo: string, filePaths: PathPair[], o
     parents: [masterBranchData.commitSha],
   });
 
-  // TODO: Create cotton branch if it doesn't exist
-
-  // TODO: Update cotton branch HEAD
+  // Create/update cotton branch HEAD
+  const setRefOpts = {
+    owner,
+    repo,
+    ref: `refs/heads/${cottonBranch}`,
+    sha: newCommit.data.sha,
+  };
+  await octokit.gitdata.createReference(setRefOpts).catch((e) => {
+    // Catch e if e is "Reference already exists" and update reference instead
+    if (e.code !== 422) throw e;
+    return octokit.gitdata.updateReference({
+      ...setRefOpts,
+      ref: `heads/${cottonBranch}`,
+      force: true,
+    });
+  });
 
   return newCommit.data.sha;
 }
