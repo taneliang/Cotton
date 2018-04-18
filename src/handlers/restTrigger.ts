@@ -96,11 +96,14 @@ async function fetchLastPRData(owner: string, repo: string, octokit: Octokit) {
   const { number, body } = allPrs.data[0];
   // TODO: Extract PR body metadata
 
-  // Fetch commits
+  // Check if foreign commits are present
   const commits = await octokit.pullRequests.getCommits({ owner, repo, number });
-  // TODO: Check if foreign commits are present
+  const authors = commits.data
+    .map((c: any) => c.author.login)
+    .filter((author: string) => author !== 'cotton[bot]'); // TODO: Replace magic const
+  const foreignCommitsPresent = authors.length > 0;
 
-  return { number, body };
+  return { number, body, foreignCommitsPresent };
 }
 
 // Return directories where both package.json and yarn.lock are present
@@ -304,8 +307,14 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   const owner = repoDetails.owner.login;
   const repo = repoDetails.name;
 
-  // TODO: Abort if foreign commits present in PR. https://octokit.github.io/rest.js/#api-PullRequests-getCommits
+  // Abort if foreign commits present in PR
   const prData = await fetchLastPRData(owner, repo, octokit);
+  if (prData && prData.foreignCommitsPresent) {
+    console.log(
+      `Foreign commits present in upgrade branch for ${repoDetails.full_name}. Aborting upgrade.`,
+    );
+    return null;
+  }
 
   // Get paths to all package.json and yarn.lock files
   const query = (filename: string) => `filename:${filename} repo:${repoDetails.full_name}`;
