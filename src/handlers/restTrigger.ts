@@ -80,6 +80,29 @@ async function fetchBranchData(owner: string, repo: string, branch: string, octo
   return { refSha, commitSha, treeSha };
 }
 
+async function fetchLastPRData(owner: string, repo: string, octokit: Octokit) {
+  // Find our PR, if present
+  const allPrs = await octokit.pullRequests.getAll({ owner, repo, head: cottonBranch });
+
+  // Return null if there are no PRs for cotton branch
+  if (allPrs.data.length === 0) return null;
+
+  // Log warning if more than 1 PR was found
+  if (allPrs.data.length > 1) {
+    console.log(owner + '/' + repo, 'has', allPrs.data.length, 'PRs on cotton branch!');
+    // TODO: Close PRs or handle them somehow
+  }
+
+  const { number, body } = allPrs.data[0];
+  // TODO: Extract PR body metadata
+
+  // Fetch commits
+  const commits = await octokit.pullRequests.getCommits({ owner, repo, number });
+  // TODO: Check if foreign commits are present
+
+  return { number, body };
+}
+
 // Return directories where both package.json and yarn.lock are present
 export function findProjectRootDirs(packageJsonPaths: string[], yarnLockPaths: string[]): string[] {
   // Get dir paths without filenames
@@ -250,11 +273,39 @@ async function commitFiles(owner: string, repo: string, filePaths: PathPair[], o
   return newCommit.data.sha;
 }
 
+// TODO: Inject/update PR body metadata
+function createOrUpdatePR(
+  owner: string,
+  repo: string,
+  upgradeDiff: any,
+  prData: any | null,
+  octokit: Octokit,
+) {
+  const commonPrOpts = { owner, repo };
+  if (!prData) {
+    return octokit.pullRequests.create({
+      ...commonPrOpts,
+      head: cottonBranch,
+      base: 'master',
+      title: 'Upgrade all dependencies',
+      body: 'supoer awesome :tada:',
+    });
+  }
+  return octokit.pullRequests.update({
+    ...commonPrOpts,
+    number: prData.number,
+    body: 'edited body :thinking:',
+  });
+}
+
 // Upgrade a repository. octokit should be authenticated with token to access repo.
 async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   console.log('Upgrading repository', repoDetails.full_name);
+  const owner = repoDetails.owner.login;
+  const repo = repoDetails.name;
 
   // TODO: Abort if foreign commits present in PR. https://octokit.github.io/rest.js/#api-PullRequests-getCommits
+  const prData = await fetchLastPRData(owner, repo, octokit);
 
   // Get paths to all package.json and yarn.lock files
   const query = (filename: string) => `filename:${filename} repo:${repoDetails.full_name}`;
@@ -273,15 +324,16 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
     localPath: join(upgradeRoot, repoPath), // Local download path
   }));
 
+  // Abort if nothing can be upgraded
   if (projDirPaths.length === 0) {
     console.log('No package.json + yarn.lock pairs in', repoDetails.full_name);
-    return {};
+    return null;
   }
 
   // Download all package.jsons and yarn.lock pairs and store them in project directories
   await Promise.map(projDirPaths, (dir: PathPair) => mkdirpAsync(dir.localPath, {}));
   const filePaths = getFilePaths(projDirPaths, ['package.json', 'yarn.lock']);
-  await fetchFiles(repoDetails.owner.login, repoDetails.name, filePaths, octokit);
+  await fetchFiles(owner, repo, filePaths, octokit);
 
   // Upgrade projects
   const rawUpgradeSummary = await Promise.map(projDirPaths, (projDir: PathPair) =>
@@ -297,14 +349,11 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   }
 
   // Commit files
-  const commitSha = await commitFiles(
-    repoDetails.owner.login,
-    repoDetails.name,
-    filePaths,
-    octokit,
-  );
+  const commitSha = await commitFiles(owner, repo, filePaths, octokit);
 
-  // TODO: Create or edit PR
+  // Create or edit PR
+  // TODO: Construct a serializable upgrade summary
+  const prResult = await createOrUpdatePR(owner, repo, upgradeSummary, prData, octokit);
 
   const result = { commitSha, upgradeSummary, projDirPaths };
   return result;
