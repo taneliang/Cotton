@@ -1,6 +1,6 @@
 import * as pug from 'pug';
 import { getMetadata, setMetadata } from './metadata';
-import { PackageDiff } from '../handlers/restTrigger';
+import { PackageDiff } from '../upgrade';
 
 export const PR_TITLE = 'Upgrade all dependencies';
 

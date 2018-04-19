@@ -3,6 +3,7 @@
     "strict": true,
     "sourceMap": true,
     "noImplicitAny": false,
-    "lib": ["esnext"]
+    "lib": ["esnext"],
+    "baseUrl": "./typings"
   }
 }
