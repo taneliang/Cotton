@@ -33,7 +33,7 @@ module.exports = {
       },
     ],
   },
-  plugins: [new CopyWebpackPlugin(['gh_priv_key.pem'])],
+  plugins: [new CopyWebpackPlugin(['gh_priv_key.pem', 'src/views/*'])],
   output: {
     libraryTarget: 'commonjs2',
     path: path.join(__dirname, '.webpack'),

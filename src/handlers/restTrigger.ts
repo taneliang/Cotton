@@ -11,6 +11,7 @@ import * as mkdirp from 'mkdirp';
 import * as ncu from 'npm-check-updates';
 
 import generateGitHubToken from '../auth/generateToken';
+import { PR_TITLE, prBody } from '../util/pr';
 
 import * as bluebird from 'bluebird';
 global.Promise = bluebird;
@@ -37,8 +38,8 @@ type PackageJson = {
   optionalDependencies?: Dependencies;
 };
 
-type DependencyDiff = { [index: string]: { original: string; upgraded: string } };
-type PackageDiff = { [index: string]: DependencyDiff };
+export type DependencyDiff = { [index: string]: { original: string; upgraded: string } };
+export type PackageDiff = { [index: string]: DependencyDiff };
 
 const cottonBranch = 'cotton/upgrade';
 
@@ -278,24 +279,22 @@ async function commitFiles(owner: string, repo: string, filePaths: PathPair[], o
 function createOrUpdatePR(
   owner: string,
   repo: string,
-  upgradeDiff: any, //{ [index: string]: PackageDiff },
+  upgradeSummary: { [index: string]: PackageDiff },
   prData: any | null,
   octokit: Octokit,
 ) {
-  const commonPrOpts = { owner, repo };
+  const commonPrOpts = { owner, repo, body: prBody(upgradeSummary) };
   if (!prData) {
     return octokit.pullRequests.create({
       ...commonPrOpts,
       head: cottonBranch,
       base: 'master',
-      title: 'Upgrade all dependencies',
-      body: 'supoer awesome :tada:',
+      title: PR_TITLE,
     });
   }
   return octokit.pullRequests.update({
     ...commonPrOpts,
     number: prData.number,
-    body: 'edited body :thinking:',
   });
 }
 
@@ -348,9 +347,9 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   );
   // Zip project dirs and upgrade diffs, then
   // remove projects in this repo that weren't upgraded
-  const upgradeSummary = _.filter(
+  const upgradeSummary = _.pickBy(
     _.zipObject(projDirPaths.map((path: PathPair) => path.repoPath), upgradeDiffs),
-  );
+  ) as { [index: string]: PackageDiff };
 
   // Abort if nothing was upgraded
   if (Object.keys(upgradeSummary).length === 0) {

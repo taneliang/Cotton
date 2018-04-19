@@ -1,0 +1,11 @@
+p Updates available!
+
+each projSummary, project in upgradeSummary
+  details
+    summary=project
+    ul
+      each depTypeSummary, depKey in projSummary
+        li=depKey
+          ul
+            each depSummary, depName in depTypeSummary
+              li=depName + ": " + depSummary.original + " → " + depSummary.upgraded
