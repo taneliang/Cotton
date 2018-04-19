@@ -8,8 +8,7 @@ function getMetadataObject(body: string) {
   if (!match) return null;
 
   try {
-    const data = JSON.parse(match[1]);
-    return data;
+    return JSON.parse(match[1]);
   } catch (e) {
     return null;
   }

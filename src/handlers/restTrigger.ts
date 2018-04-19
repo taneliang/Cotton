@@ -1,4 +1,3 @@
-import { join } from 'path';
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
@@ -27,8 +26,10 @@ export const restTrigger: Handler = async (
     const tokens: string[] = await fetchTokensForInstallations(installationIds, octokit);
 
     // Pair up installation IDs with access tokens
-    if (installationIds.length !== tokens.length) throw 'Not all installations have tokens';
-    const installationIdTokenPairs = <[string, string][]>_.zip(installationIds, tokens);
+    if (installationIds.length !== tokens.length) {
+      throw new Error('Not all installations have tokens');
+    }
+    const installationIdTokenPairs = _.zip(installationIds, tokens) as [string, string][];
 
     // Upgrade all repos in all installations
     const result = await Promise.map(installationIdTokenPairs, (pair: [string, string]) =>

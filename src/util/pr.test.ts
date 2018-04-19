@@ -1,5 +1,5 @@
 import { prHumanReadableBody, prBody, getPrMetadata } from './pr';
-import { getMetadata, setMetadata } from './metadata';
+import { getMetadata } from './metadata';
 
 // Mock package upgrade objects
 const upgradedOne = { one: { original: '0.1.0', upgraded: '0.1.1' } };

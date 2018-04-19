@@ -72,8 +72,7 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   // Create or edit PR
   const prResult = await createOrUpdatePR(owner, repo, upgradeSummary, prData, octokit);
 
-  const result = { commitSha, upgradeSummary, projDirPaths };
-  return result;
+  return { commitSha, upgradeSummary, projDirPaths, pr: prResult.data.number };
 }
 
 // Upgrade an installation
@@ -87,8 +86,7 @@ export async function upgradeInstallation(installationId: string, token: string)
   // Find and upgrade all repos in this installation
   // TODO: Split repo upgrades into individual lambdas
   const repos = await octokit.apps.getInstallationRepositories({});
-  const result = await Promise.map(repos.data.repositories, (repoDetails: any) =>
+  return Promise.map(repos.data.repositories, (repoDetails: any) =>
     upgradeRepository(repoDetails, octokit),
   );
-  return result;
 }

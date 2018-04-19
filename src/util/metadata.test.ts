@@ -41,12 +41,14 @@ describe(getMetadata, () => {
 });
 
 describe(setMetadata, () => {
+  const standardExpectedBody =
+    'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"value"} -->';
+
   test('should set new metadata object with value', () => {
     const body = 'Body\n\ncottonmetadata';
     const value = 'value';
     const newBody = setMetadata(body, 'key', value);
-    const expectedBody = 'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"value"} -->';
-    expect(newBody).toEqual(expectedBody);
+    expect(newBody).toEqual(standardExpectedBody);
   });
 
   test('should replace and append to existing metadata object if present', () => {
@@ -62,16 +64,14 @@ describe(setMetadata, () => {
     const body = 'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"oldvalue"} -->';
     const value = 'value';
     const newBody = setMetadata(body, 'key', value);
-    const expectedBody = 'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"value"} -->';
-    expect(newBody).toEqual(expectedBody);
+    expect(newBody).toEqual(standardExpectedBody);
   });
 
   test('should replace all invalid metadata comments', () => {
     const body = 'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"value" -->';
     const value = 'value';
     const newBody = setMetadata(body, 'key', value);
-    const expectedBody = 'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"value"} -->';
-    expect(newBody).toEqual(expectedBody);
+    expect(newBody).toEqual(standardExpectedBody);
   });
 
   test('should also remove all other metadata comments', () => {
@@ -79,7 +79,6 @@ describe(setMetadata, () => {
       'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key": "oldvalue"} -->\n\n<!-- cottonmetadata = {"anotherkey": "value"} -->';
     const value = 'value';
     const newBody = setMetadata(body, 'key', value);
-    const expectedBody = 'Body\n\ncottonmetadata\n\n<!-- cottonmetadata = {"key":"value"} -->';
-    expect(newBody).toEqual(expectedBody);
+    expect(newBody).toEqual(standardExpectedBody);
   });
 });

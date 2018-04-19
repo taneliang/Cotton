@@ -35,17 +35,17 @@ export async function fetchLastPRData(owner: string, repo: string, octokit: Octo
     // TODO: Close PRs or handle them somehow
   }
 
-  const { number, body } = allPrs.data[0];
+  const { number: id, body } = allPrs.data[0];
   // TODO: Extract PR body metadata
 
   // Check if foreign commits are present
-  const commits = await octokit.pullRequests.getCommits({ owner, repo, number });
+  const commits = await octokit.pullRequests.getCommits({ owner, repo, number: id });
   const authors = commits.data
     .map((c: any) => c.author.login)
     .filter((author: string) => author !== 'cotton[bot]'); // TODO: Replace magic const
   const foreignCommitsPresent = authors.length > 0;
 
-  return { number, body, foreignCommitsPresent };
+  return { id, body, foreignCommitsPresent };
 }
 
 // Fetch all files in owner/repo and save to disk
@@ -88,7 +88,7 @@ export async function commitFiles(
 
   if (!masterBranchData) {
     console.log(owner + '/' + repo, 'does not have a master branch!');
-    throw 'No master branch found in ' + owner + '/' + repo;
+    throw new Error('No master branch found in ' + owner + '/' + repo);
   }
 
   // Upload all files as blobs
@@ -166,6 +166,6 @@ export function createOrUpdatePR(
   }
   return octokit.pullRequests.update({
     ...commonPrOpts,
-    number: prData.number,
+    number: prData.id,
   });
 }
