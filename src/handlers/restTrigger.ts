@@ -275,7 +275,6 @@ async function commitFiles(owner: string, repo: string, filePaths: PathPair[], o
   return newCommit.data.sha;
 }
 
-// TODO: Inject/update PR body metadata
 function createOrUpdatePR(
   owner: string,
   repo: string,
@@ -362,7 +361,6 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
   const commitSha = await commitFiles(owner, repo, filePaths, octokit);
 
   // Create or edit PR
-  // TODO: Construct a serializable upgrade summary
   const prResult = await createOrUpdatePR(owner, repo, upgradeSummary, prData, octokit);
 
   const result = { commitSha, upgradeSummary, projDirPaths };

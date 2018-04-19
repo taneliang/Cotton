@@ -1,0 +1,33 @@
+// Heavily adapted from probot/metadata
+// https://github.com/probot/metadata/blob/master/index.js
+
+const regex = /\n\n<!-- cottonmetadata = (.*) -->/;
+
+function getMetadataObject(body: string) {
+  const match = body.match(regex);
+  if (!match) return null;
+
+  try {
+    const data = JSON.parse(match[1]);
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function getMetadata(body: string, key: string) {
+  const data = getMetadataObject(body);
+  return data && data[key];
+}
+
+// Set add key:value to metadata in bodyString.
+// value must be JSON serializable
+export function setMetadata(body: string, key: string, value: any) {
+  const data = getMetadataObject(body) || {};
+  const bodyWithoutMetadata = body.replace(new RegExp(regex, 'g'), (_, json) => {
+    return '';
+  });
+
+  data[key] = value;
+  return `${bodyWithoutMetadata}\n\n<!-- cottonmetadata = ${JSON.stringify(data)} -->`;
+}

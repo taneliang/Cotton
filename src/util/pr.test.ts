@@ -1,4 +1,5 @@
-import { prHumanReadableBody, prBody } from './pr';
+import { prHumanReadableBody, prBody, getPrMetadata } from './pr';
+import { getMetadata, setMetadata } from './metadata';
 
 // Mock package upgrade objects
 const upgradedOne = { one: { original: '0.1.0', upgraded: '0.1.1' } };
@@ -33,5 +34,19 @@ describe(prBody, () => {
     expect(body).toContain(humanReadableBody);
   });
 
-  test('should contain metadata');
+  test('should contain metadata', () => {
+    const body = prBody(upgradeSummary);
+    expect(body).toContain('cottonmetadata');
+    expect(getMetadata(body, 'upgradeSummary')).toEqual(upgradeSummary);
+  });
+});
+
+describe(getPrMetadata, () => {
+  test('should return upgrade summary', () => {
+    const body = prBody(upgradeSummary);
+    const metadata = getPrMetadata(body);
+    expect(metadata).toEqual({
+      upgradeSummary,
+    });
+  });
 });
