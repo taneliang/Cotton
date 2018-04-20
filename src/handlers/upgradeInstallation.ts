@@ -3,7 +3,14 @@ import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import { upgradeProject, PackageDiff } from '../upgrade';
-import { fetchLastPRData, fetchFiles, commitFiles, createOrUpdatePR } from '../github';
+import {
+  fetchTokenForInstallation,
+  fetchLastPRData,
+  fetchFiles,
+  commitFiles,
+  createOrUpdatePR,
+} from '../github';
+import generateGitHubToken from '../auth/generateToken';
 import { findProjectRootDirs, getFilePaths, mkdirpAsync, PathPair } from '../util/files';
 
 // Upgrade a repository. octokit should be authenticated with token to access repo.
@@ -76,11 +83,13 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 }
 
 // Upgrade an installation
-export async function upgradeInstallation(installationId: string, token: string) {
+export async function upgradeInstallation(installationId: string) {
   console.log('Upgrading installation', installationId);
 
   // Initialize octokit and authenticate for this installation
   const octokit = new Octokit();
+  octokit.authenticate({ type: 'integration', token: generateGitHubToken() });
+  const token = await fetchTokenForInstallation(installationId, octokit);
   octokit.authenticate({ type: 'token', token });
 
   // Find and upgrade all repos in this installation

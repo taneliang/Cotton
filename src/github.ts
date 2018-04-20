@@ -13,13 +13,11 @@ export async function fetchInstallationIds(octokit: Octokit) {
   return installations.data.map((inst: any) => inst.id);
 }
 
-export function fetchTokensForInstallations(installationIds: string[], octokit: Octokit) {
-  return Promise.map(installationIds, async (installationId: string) => {
-    const tokenResult = await octokit.apps.createInstallationToken({
-      installation_id: installationId,
-    });
-    return tokenResult.data.token;
+export async function fetchTokenForInstallation(installationId: string, octokit: Octokit) {
+  const tokenResult = await octokit.apps.createInstallationToken({
+    installation_id: installationId,
   });
+  return tokenResult.data.token;
 }
 
 export async function fetchLastPRData(owner: string, repo: string, octokit: Octokit) {
