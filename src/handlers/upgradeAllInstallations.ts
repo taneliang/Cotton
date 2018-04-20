@@ -1,4 +1,6 @@
+import { promisify } from 'util';
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
+import * as AWS from 'aws-sdk';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 
@@ -14,21 +16,26 @@ export const upgradeAllInstallations: Handler = async (
   context: Context,
   callback: Callback,
 ) => {
-  let response: any | null = null;
-
   try {
     // Initialize and authenticate octokit
     const octokit = new Octokit();
     octokit.authenticate({ type: 'integration', token: generateGitHubToken() });
 
     // Upgrade all repos in all installations
-    const installationIds: string[] = await fetchInstallationIds(octokit);
-    const result = await Promise.map(installationIds, upgradeInstallation);
+    const installationIds: number[] = await fetchInstallationIds(octokit);
 
-    response = { statusCode: 200, body: JSON.stringify(result) };
+    console.log('Upgrading installations:', installationIds);
+    const sns = new AWS.SNS();
+    const publishAsync = promisify(sns.publish);
+    const response = await Promise.map(installationIds, (instId: number) => {
+      return publishAsync.call(sns, {
+        Message: instId.toString(),
+        TopicArn: process.env.upgradeInstallationSnsArn,
+      });
+    });
+
+    return callback(null, response);
   } catch (e) {
     return callback(e);
   }
-
-  return callback(null, response);
 };

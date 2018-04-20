@@ -487,6 +487,21 @@ atob@^2.0.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/atob/-/atob-2.1.0.tgz#ab2b150e51d7b122b9efc8d7340c06b6c41076bc"
 
+aws-sdk@^2.225.1:
+  version "2.225.1"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.225.1.tgz#6ec6994a6337f2b553b16f6576df34ea1ac314d8"
+  dependencies:
+    buffer "4.9.1"
+    events "1.1.1"
+    ieee754 "1.1.8"
+    jmespath "0.15.0"
+    querystring "0.2.0"
+    sax "1.2.1"
+    url "0.10.3"
+    uuid "3.1.0"
+    xml2js "0.4.17"
+    xmlbuilder "4.2.1"
+
 aws-sdk@^2.75.0:
   version "2.222.1"
   resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.222.1.tgz#d84c34003bb882d1fec17c41c74cb817bda84914"
@@ -6019,6 +6034,10 @@ serverless-offline@^3.20.1:
     jsonwebtoken "^7.4.3"
     lodash "^4.17.4"
     velocityjs "^0.9.3"
+
+serverless-pseudo-parameters@^1.4.2:
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/serverless-pseudo-parameters/-/serverless-pseudo-parameters-1.4.2.tgz#3a532c2d0d5a591dfa583cb1dc74ac0ba95df604"
 
 serverless-webpack@^5.1.1:
   version "5.1.1"

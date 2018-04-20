@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
+import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import { upgradeProject, PackageDiff } from '../upgrade';
@@ -12,6 +12,7 @@ import {
 } from '../github';
 import generateGitHubToken from '../auth/generateToken';
 import { findProjectRootDirs, getFilePaths, mkdirpAsync, PathPair } from '../util/files';
+import { isSnsEvent, isApiGatewayEvent } from '../util/lambdaEvent';
 
 // Upgrade a repository. octokit should be authenticated with token to access repo.
 async function upgradeRepository(repoDetails: any, octokit: Octokit) {
@@ -83,7 +84,7 @@ async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 }
 
 // Upgrade an installation
-export async function upgradeInstallation(installationId: string) {
+async function upgrade(installationId: string) {
   console.log('Upgrading installation', installationId);
 
   // Initialize octokit and authenticate for this installation
@@ -99,3 +100,32 @@ export async function upgradeInstallation(installationId: string) {
     upgradeRepository(repoDetails, octokit),
   );
 }
+
+export const upgradeInstallation: Handler = async (
+  event: any,
+  context: Context,
+  callback: Callback,
+) => {
+  // Extract installation ID
+  let installationId;
+  if (isSnsEvent(event)) {
+    installationId = (event as SNSEvent).Records[0].Sns.Message;
+  } else if (isApiGatewayEvent(event)) {
+    const pathParams = (event as APIGatewayEvent).pathParameters;
+    if (pathParams) installationId = pathParams.instId;
+  }
+
+  // Abort if no installation ID found
+  if (!installationId) {
+    console.log('No installation ID found.', event);
+    return;
+  }
+
+  try {
+    // Run upgrade routine
+    const response = await upgrade(installationId);
+    return callback(null, response);
+  } catch (e) {
+    return callback(e);
+  }
+};

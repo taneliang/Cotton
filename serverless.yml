@@ -1,16 +1,20 @@
 service:
   name: cottonbot
 
-# Add the serverless-webpack plugin
 plugins:
   - serverless-webpack
+  - serverless-pseudo-parameters
   - serverless-offline
 
 provider:
   name: aws
   runtime: nodejs8.10
   region: ap-southeast-1 # Asia Pacific (Singapore)
-  timeout: 100
+  iamRoleStatements:
+    - Effect: "Allow"
+      Resource: "*"
+      Action:
+        - "sns:*"
 
 custom:
   webpack:
@@ -28,7 +32,21 @@ functions:
           path: githubWebhookListener
   upgradeAllInstallations:
     handler: src/handlers/upgradeAllInstallations.upgradeAllInstallations
+    environment:
+      upgradeInstallationSnsArn: "arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:upgradeInstallation"
     events:
       - http:
           method: get
           path: upgradeAllInstallations
+  upgradeInstallation:
+    handler: src/handlers/upgradeInstallation.upgradeInstallation
+    timeout: 30
+    events:
+      - sns: upgradeInstallation
+      - http:
+          method: get
+          path: upgradeInstallation/{instId}
+          request:
+            parameters:
+              paths:
+                instId: true
