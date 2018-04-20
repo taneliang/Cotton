@@ -9,7 +9,7 @@ import generateGitHubToken from '../auth/generateToken';
 import * as bluebird from 'bluebird';
 global.Promise = bluebird;
 
-export const restTrigger: Handler = async (
+export const upgradeAllInstallations: Handler = async (
   event: APIGatewayEvent,
   context: Context,
   callback: Callback,

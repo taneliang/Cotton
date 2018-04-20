@@ -26,9 +26,9 @@ functions:
       - http:
           method: post
           path: githubWebhookListener
-  restTrigger:
-    handler: src/handlers/restTrigger.restTrigger
+  upgradeAllInstallations:
+    handler: src/handlers/upgradeAllInstallations.upgradeAllInstallations
     events:
       - http:
           method: get
-          path: restTrigger
+          path: upgradeAllInstallations
