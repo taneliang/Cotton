@@ -3,7 +3,6 @@ import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambd
 import * as AWS from 'aws-sdk';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
-import { upgradeRepository } from './upgradeRepository';
 import { fetchTokenForInstallation } from '../github';
 import generateGitHubToken from '../auth/generateToken';
 import { isSnsEvent, isApiGatewayEvent } from '../util/lambdaEvent';
@@ -23,7 +22,7 @@ async function upgrade(installationId: string) {
 
   const sns = new AWS.SNS();
   const publishAsync = promisify(sns.publish);
-  return await Promise.map(repos.data.repositories, (repoDetails: any) => {
+  return Promise.map(repos.data.repositories, (repoDetails: any) => {
     const messageObject = {
       installationId,
       repoDetails: {

@@ -110,7 +110,9 @@ export const upgradeRepository: Handler = async (
         owner: payload.repoDetails.owner,
         repo: payload.repoDetails.repo,
       };
-    } catch (e) {}
+    } catch (e) {
+      // Leave fields as undefined
+    }
   } else if (isApiGatewayEvent(event)) {
     const pathParams = (event as APIGatewayEvent).pathParameters;
     if (pathParams) {

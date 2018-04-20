@@ -4,7 +4,6 @@ import * as AWS from 'aws-sdk';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 
-import { upgradeInstallation } from './upgradeInstallation';
 import { fetchInstallationIds } from '../github';
 import generateGitHubToken from '../auth/generateToken';
 
