@@ -2,36 +2,52 @@ import { join } from 'path';
 import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambda';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
+import * as uuid from 'uuid/v4';
 import { upgradeProject, PackageDiff } from '../upgrade';
-import { fetchLastPRData, fetchFiles, commitFiles, createOrUpdatePR } from '../github';
+import {
+  fetchTokenForInstallation,
+  fetchLastPRData,
+  fetchFiles,
+  commitFiles,
+  createOrUpdatePR,
+} from '../github';
 import generateGitHubToken from '../auth/generateToken';
 import { findProjectRootDirs, getFilePaths, mkdirpAsync, PathPair } from '../util/files';
 import { isSnsEvent, isApiGatewayEvent } from '../util/lambdaEvent';
 
-// Upgrade a repository. octokit should be authenticated with token to access repo.
-export async function upgradeRepository(repoDetails: any, octokit: Octokit) {
-  console.log('Upgrading repository', repoDetails.full_name);
-  const owner = repoDetails.owner.login;
-  const repo = repoDetails.name;
+export type RepoDetails = {
+  owner: string;
+  repo: string;
+};
+
+// Upgrade a repository.
+async function upgrade(installationId: string, repoDetails: RepoDetails) {
+  const { owner, repo } = repoDetails;
+  const repoFullName = `${owner}/${repo}`;
+  console.log('Upgrading repository', repoFullName);
+
+  // Initialize octokit and authenticate for this installation
+  const octokit = new Octokit();
+  octokit.authenticate({ type: 'integration', token: generateGitHubToken() });
+  const token = await fetchTokenForInstallation(installationId, octokit);
+  octokit.authenticate({ type: 'token', token });
 
   // Abort if foreign commits present in PR
   const prData = await fetchLastPRData(owner, repo, octokit);
   if (prData && prData.foreignCommitsPresent) {
-    console.log(
-      `Foreign commits present in upgrade branch for ${repoDetails.full_name}. Aborting upgrade.`,
-    );
+    console.log(`Foreign commits present in upgrade branch for ${repoFullName}. Aborting upgrade.`);
     return null;
   }
 
   // Get paths to all package.json and yarn.lock files
-  const query = (filename: string) => `filename:${filename} repo:${repoDetails.full_name}`;
+  const query = (filename: string) => `filename:${filename} repo:${repoFullName}`;
   const [packageJsons, yarnLocks] = await Promise.all([
     octokit.search.code({ q: query('package.json') }),
     octokit.search.code({ q: query('yarn.lock') }),
   ]);
 
   // Filter out all package.jsons without a corresponding yarn.lock and vice versa
-  const upgradeRoot = join('/tmp', repoDetails.id.toString());
+  const upgradeRoot = join('/tmp', uuid());
   const projDirPaths = findProjectRootDirs(
     packageJsons.data.items.map((i: any) => i.path),
     yarnLocks.data.items.map((i: any) => i.path),
@@ -42,7 +58,7 @@ export async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 
   // Abort if nothing can be upgraded
   if (projDirPaths.length === 0) {
-    console.log('No package.json + yarn.lock pairs in', repoDetails.full_name);
+    console.log('No package.json + yarn.lock pairs in', repoFullName);
     return null;
   }
 
@@ -63,7 +79,7 @@ export async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 
   // Abort if nothing was upgraded
   if (Object.keys(upgradeSummary).length === 0) {
-    console.log('Nothing to upgrade for', repoDetails.full_name);
+    console.log('Nothing to upgrade for', repoFullName);
     // TODO: Close open PR if present
     return null;
   }
@@ -76,3 +92,51 @@ export async function upgradeRepository(repoDetails: any, octokit: Octokit) {
 
   return { commitSha, upgradeSummary, projDirPaths, pr: prResult.data.number };
 }
+
+export const upgradeRepository: Handler = async (
+  event: any,
+  context: Context,
+  callback: Callback,
+) => {
+  // Extract payload data
+  let installationId: string | undefined;
+  let repoDetails: RepoDetails | undefined;
+  if (isSnsEvent(event)) {
+    const jsonMessage = (event as SNSEvent).Records[0].Sns.Message;
+    try {
+      const payload = JSON.parse(jsonMessage);
+      installationId = payload.installationId;
+      repoDetails = {
+        owner: payload.repoDetails.owner,
+        repo: payload.repoDetails.repo,
+      };
+    } catch (e) {}
+  } else if (isApiGatewayEvent(event)) {
+    const pathParams = (event as APIGatewayEvent).pathParameters;
+    if (pathParams) {
+      installationId = pathParams.instId;
+      repoDetails = {
+        owner: pathParams.owner,
+        repo: pathParams.repo,
+      };
+    }
+  }
+
+  // Abort if no installation ID or repo details found
+  if (!installationId) {
+    console.log('No installation ID found.', event);
+    return;
+  }
+  if (!repoDetails) {
+    console.log('No repo details found.', event);
+    return;
+  }
+
+  try {
+    // Run upgrade routine
+    const response = await upgrade(installationId, repoDetails);
+    return callback(null, response);
+  } catch (e) {
+    return callback(e);
+  }
+};

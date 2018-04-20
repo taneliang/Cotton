@@ -1,4 +1,6 @@
+import { promisify } from 'util';
 import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambda';
+import * as AWS from 'aws-sdk';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import { upgradeRepository } from './upgradeRepository';
@@ -17,11 +19,23 @@ async function upgrade(installationId: string) {
   octokit.authenticate({ type: 'token', token });
 
   // Find and upgrade all repos in this installation
-  // TODO: Split repo upgrades into individual lambdas
   const repos = await octokit.apps.getInstallationRepositories({});
-  return Promise.map(repos.data.repositories, (repoDetails: any) =>
-    upgradeRepository(repoDetails, octokit),
-  );
+
+  const sns = new AWS.SNS();
+  const publishAsync = promisify(sns.publish);
+  return await Promise.map(repos.data.repositories, (repoDetails: any) => {
+    const messageObject = {
+      installationId,
+      repoDetails: {
+        owner: repoDetails.owner.login,
+        repo: repoDetails.name,
+      },
+    };
+    return publishAsync.call(sns, {
+      Message: JSON.stringify(messageObject),
+      TopicArn: process.env.upgradeRepositorySnsArn,
+    });
+  });
 }
 
 export const upgradeInstallation: Handler = async (

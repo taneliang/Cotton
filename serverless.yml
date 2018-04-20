@@ -40,7 +40,8 @@ functions:
           path: upgradeAllInstallations
   upgradeInstallation:
     handler: src/handlers/upgradeInstallation.upgradeInstallation
-    timeout: 30
+    environment:
+      upgradeRepositorySnsArn: "arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:upgradeRepository"
     events:
       - sns: upgradeInstallation
       - http:
@@ -50,3 +51,17 @@ functions:
             parameters:
               paths:
                 instId: true
+  upgradeRepository:
+    handler: src/handlers/upgradeRepository.upgradeRepository
+    timeout: 30
+    events:
+      - sns: upgradeRepository
+      - http:
+          method: get
+          path: upgradeRepository/{instId}/{owner}/{repo}
+          request:
+            parameters:
+              paths:
+                instId: true
+                owner: true
+                repo: true
