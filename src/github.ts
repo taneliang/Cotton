@@ -22,7 +22,11 @@ export async function fetchTokenForInstallation(installationId: string, octokit:
 
 export async function fetchLastPRData(owner: string, repo: string, octokit: Octokit) {
   // Find our PR, if present
-  const allPrs = await octokit.pullRequests.getAll({ owner, repo, head: cottonBranch });
+  const allPrs = await octokit.pullRequests.getAll({
+    owner,
+    repo,
+    head: `${owner}:${cottonBranch}`,
+  });
 
   // Return null if there are no PRs for cotton branch
   if (allPrs.data.length === 0) return null;
