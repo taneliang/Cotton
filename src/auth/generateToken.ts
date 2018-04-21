@@ -14,7 +14,7 @@ export default function generateGitHubToken() {
   const payload = {
     iat: jwtDate(new Date()),
     exp: jwtDate(new Date()) + 100,
-    iss: 10823,
+    iss: process.env.GITHUB_APP_ID,
   };
 
   const options = {
