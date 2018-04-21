@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import * as jwt from 'jsonwebtoken';
+import { gitHubAppId } from '../config';
 
 function jwtDate(date: Date) {
   return Math.floor(date.getTime() / 1000);
@@ -14,7 +15,7 @@ export default function generateGitHubToken() {
   const payload = {
     iat: jwtDate(new Date()),
     exp: jwtDate(new Date()) + 100,
-    iss: process.env.GITHUB_APP_ID,
+    iss: gitHubAppId,
   };
 
   const options = {
