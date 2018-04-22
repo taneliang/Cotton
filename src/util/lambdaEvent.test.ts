@@ -8,7 +8,7 @@ const sampleEvents = [
   require('./__mocks__/aws.event.gatewayproxyrequest.json'),
 ];
 
-// Tests indentifier function, expecting it to return false for every event
+// Tests identifier function, expecting it to return false for every event
 // except the one at passingIndex.
 function testEventIdentifier(passingIndex: number, identifier: (event: any) => boolean) {
   describe(identifier, () => {

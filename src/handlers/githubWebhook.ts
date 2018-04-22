@@ -1,13 +1,14 @@
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import { verifyWebhookEvent } from '../github/auth';
+import { handleIssueCommentCreated } from '../github/webhookHandlers';
 
-function handleEvent(eventType: string, payload: { [key: string]: any }) {
+async function handleEvent(eventType: string, payload: { [key: string]: any }) {
   const action: string | undefined = payload.action;
 
   console.log('---------------------------------');
+  console.log('Payload', payload);
   console.log(`Github-Event: "${eventType}" with action: "${action}"`);
   console.log('---------------------------------');
-  console.log('Payload', payload);
 
   // TODO: Handlers:
   // InstallationEvent created: Trigger upgrade
@@ -17,14 +18,20 @@ function handleEvent(eventType: string, payload: { [key: string]: any }) {
   // PullRequestReviewCommentEvent created: Possibly trigger upgrade
   // PushEvent: Possibly trigger upgrade
 
-  switch (eventType) {
+  function eventAction(eventType: string, actionStr: string | undefined) {
+    return `${eventType} ____ ${actionStr || '__NO_ACTION__'}`;
+  }
+
+  switch (eventAction(eventType, action)) {
+    case eventAction('issue_comment', 'created'):
+      return await handleIssueCommentCreated(payload);
     default:
-      console.log('Unsupported event', eventType);
+      console.log('Unsupported event', eventType, action || '');
       break;
   }
 }
 
-export const githubWebhookListener: Handler = (
+export const githubWebhookListener: Handler = async (
   event: APIGatewayEvent,
   context: Context,
   callback: Callback,
@@ -36,7 +43,8 @@ export const githubWebhookListener: Handler = (
 
   // Do custom stuff here with github event data
   // For more on events see https://developer.github.com/v3/activity/events/types/
-  const result = handleEvent(event.headers['x-github-event'], JSON.parse(event.body || ''));
+  const eventType = event.headers['x-github-event'] || event.headers['X-GitHub-Event'];
+  const result = await handleEvent(eventType, JSON.parse(event.body || ''));
 
   const response = {
     statusCode: 200,

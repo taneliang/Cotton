@@ -26,6 +26,9 @@ custom:
 functions:
   githubWebhookListener:
     handler: src/handlers/githubWebhook.githubWebhookListener
+    environment:
+      upgradeRepositorySnsArn: "arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:upgradeRepository"
+      GITHUB_WEBHOOK_SECRET: ${ssm:GITHUB_WEBHOOK_SECRET}
     events:
       - http:
           method: post

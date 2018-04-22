@@ -45,19 +45,19 @@ export function verifyWebhookEvent(event: APIGatewayEvent) {
 
   const headers = event.headers;
 
-  const sig = headers['x-hub-signature'];
+  const sig = headers['x-hub-signature'] || headers['X-Hub-Signature'];
   if (!sig) {
     const errMsg = 'No X-Hub-Signature found on request';
     return { statusCode: 401, body: errMsg };
   }
 
-  const githubEvent = headers['x-github-event'];
+  const githubEvent = headers['x-github-event'] || headers['X-GitHub-Event'];
   if (!githubEvent) {
     const errMsg = 'No X-Github-Event found on request';
     return { statusCode: 422, body: errMsg };
   }
 
-  const id = headers['x-github-delivery'];
+  const id = headers['x-github-delivery'] || headers['X-GitHub-Delivery'];
   if (!id) {
     const errMsg = 'No X-Github-Delivery found on request';
     return { statusCode: 401, body: errMsg };
