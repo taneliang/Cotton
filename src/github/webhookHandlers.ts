@@ -1,6 +1,7 @@
 import { promisify } from 'util';
 import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
+import { RepoDetails } from '../handlers/upgradeRepository';
 
 // Returns an array of lowercased slash commands, or null if no slash commands found.
 export function slashCommands(str: string) {
@@ -13,6 +14,17 @@ export function slashCommands(str: string) {
         .toLowerCase() // Lowercase for easier identification
         .substring(1), // Remove leading /
   );
+}
+
+// Use SNS to invoke lambda that upgrades repos
+async function invokeUpgradeRepo(installationId: string, repoDetails: RepoDetails) {
+  const sns = new AWS.SNS();
+  const publishAsync = promisify(sns.publish);
+  const messageObject = { installationId, repoDetails };
+  return publishAsync.call(sns, {
+    Message: JSON.stringify(messageObject),
+    TopicArn: process.env.upgradeRepositorySnsArn,
+  });
 }
 
 export async function handleIssueCommentCreated(payload: any) {
@@ -44,21 +56,11 @@ export async function handleIssueCommentCreated(payload: any) {
   const upgradeCommands = ['upgrade', 'reupgrade', 'update'];
   if (_.intersection(commands, upgradeCommands).length > 0) {
     const installationId = payload.installation.id;
-
-    // Use SNS to invoke lambda that upgrades repos
-    const sns = new AWS.SNS();
-    const publishAsync = promisify(sns.publish);
-    const messageObject = {
-      installationId,
-      repoDetails: {
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-      },
+    const repoDetails = {
+      owner: payload.repository.owner.login,
+      repo: payload.repository.name,
     };
-    await publishAsync.call(sns, {
-      Message: JSON.stringify(messageObject),
-      TopicArn: process.env.upgradeRepositorySnsArn,
-    });
-    return { installationId, commands, messageObject };
+    await invokeUpgradeRepo(payload.installation.id, repoDetails);
+    return { commands, installationId, repoDetails };
   }
 }
