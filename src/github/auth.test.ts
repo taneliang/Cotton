@@ -1,4 +1,4 @@
-import generateGitHubToken from './generateToken';
+import { generateGitHubToken } from './auth';
 import * as jwt from 'jsonwebtoken';
 
 jest.mock('fs');
