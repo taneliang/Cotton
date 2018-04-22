@@ -10,81 +10,85 @@ function signRequestBody(key: string, body: string | null) {
 
 const responseHeaders = { 'Content-Type': 'text/plain' };
 
-export const githubWebhookListener: Handler = (
-  event: APIGatewayEvent,
-  context: Context,
-  callback: Callback,
-) => {
-  let errMsg;
-
+// Verifies authenticity of a webhook event.
+// https://developer.github.com/webhooks/#delivery-headers
+function verifyGitHubWebhookEvent(event: APIGatewayEvent) {
   const token = process.env.GITHUB_WEBHOOK_SECRET;
   if (typeof token !== 'string') {
-    errMsg = "Must provide a 'GITHUB_WEBHOOK_SECRET' env variable";
-    return callback(null, {
-      statusCode: 401,
-      headers: responseHeaders,
-      body: errMsg,
-    });
+    const errMsg = "Must provide a 'GITHUB_WEBHOOK_SECRET' env variable";
+    return { statusCode: 401, body: errMsg };
   }
 
   const headers = event.headers;
 
   const sig = headers['x-hub-signature'];
   if (!sig) {
-    errMsg = 'No X-Hub-Signature found on request';
-    return callback(null, {
-      statusCode: 401,
-      headers: responseHeaders,
-      body: errMsg,
-    });
+    const errMsg = 'No X-Hub-Signature found on request';
+    return { statusCode: 401, body: errMsg };
   }
 
   const githubEvent = headers['x-github-event'];
   if (!githubEvent) {
-    errMsg = 'No X-Github-Event found on request';
-    return callback(null, {
-      statusCode: 422,
-      headers: responseHeaders,
-      body: errMsg,
-    });
+    const errMsg = 'No X-Github-Event found on request';
+    return { statusCode: 422, body: errMsg };
   }
 
   const id = headers['x-github-delivery'];
   if (!id) {
-    errMsg = 'No X-Github-Delivery found on request';
-    return callback(null, {
-      statusCode: 401,
-      headers: responseHeaders,
-      body: errMsg,
-    });
+    const errMsg = 'No X-Github-Delivery found on request';
+    return { statusCode: 401, body: errMsg };
   }
 
   const calculatedSig = signRequestBody(token, event.body);
   if (sig !== calculatedSig) {
-    errMsg = "X-Hub-Signature incorrect. Github webhook token doesn't match";
-    return callback(null, {
-      statusCode: 401,
-      headers: responseHeaders,
-      body: errMsg,
-    });
+    const errMsg = "X-Hub-Signature incorrect. Github webhook token doesn't match";
+    return { statusCode: 401, body: errMsg };
   }
 
-  const parsedBody = JSON.parse(event.body || '');
+  return null;
+}
 
-  /* eslint-disable */
+function handleEvent(eventType: string, payload: { [key: string]: any }) {
+  const action: string | undefined = payload.action;
+
   console.log('---------------------------------');
-  console.log(`Github-Event: "${githubEvent}" with action: "${parsedBody.action}"`);
+  console.log(`Github-Event: "${eventType}" with action: "${action}"`);
   console.log('---------------------------------');
-  console.log('Payload', parsedBody);
-  /* eslint-enable */
+  console.log('Payload', payload);
+
+  // TODO: Handlers:
+  // InstallationEvent created: Trigger upgrade
+  // InstallationRepositoriesEvent added: Trigger repo upgrade
+  // IssueCommentEvent created: Possibly trigger repo upgrade
+  // IssuesEvent closed: Possibly delete branch
+  // PullRequestReviewCommentEvent created: Possibly trigger upgrade
+  // PushEvent: Possibly trigger upgrade
+
+  switch (eventType) {
+    default:
+      console.log('Unsupported event', eventType);
+      break;
+  }
+}
+
+export const githubWebhookListener: Handler = (
+  event: APIGatewayEvent,
+  context: Context,
+  callback: Callback,
+) => {
+  let error = verifyGitHubWebhookEvent(event);
+  if (error) {
+    return callback(null, { ...error, headers: responseHeaders });
+  }
 
   // Do custom stuff here with github event data
   // For more on events see https://developer.github.com/v3/activity/events/types/
+  const result = handleEvent(event.headers['x-github-event'], JSON.parse(event.body || ''));
 
   const response = {
     statusCode: 200,
     body: JSON.stringify({
-      input: event,
+      result,
     }),
   };
 
