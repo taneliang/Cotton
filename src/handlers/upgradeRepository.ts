@@ -4,14 +4,9 @@ import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import * as uuid from 'uuid/v4';
 import { upgradeProject, PackageDiff } from '../upgrade';
-import {
-  fetchTokenForInstallation,
-  fetchLastPRData,
-  fetchFiles,
-  commitFiles,
-  createOrUpdatePR,
-} from '../github';
-import generateGitHubToken from '../auth/generateToken';
+import { fetchTokenForInstallation, fetchLastPRData, fetchFiles } from '../github/queries';
+import { commitFiles, createOrUpdatePR } from '../github/mutations';
+import generateGitHubToken from '../github/auth';
 import { findProjectRootDirs, getFilePaths, mkdirpAsync, PathPair } from '../util/files';
 import { isSnsEvent, isApiGatewayEvent } from '../util/lambdaEvent';
 

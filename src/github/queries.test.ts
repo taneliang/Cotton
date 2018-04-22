@@ -1,4 +1,4 @@
-import { fetchInstallationIds, fetchTokenForInstallation } from './github';
+import { fetchInstallationIds, fetchTokenForInstallation } from './queries';
 import * as Octokit from '@octokit/rest';
 
 // Cleanly double cast an octokitMock object to Octokit to appease TypeScript

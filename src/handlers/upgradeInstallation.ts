@@ -3,8 +3,8 @@ import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambd
 import * as AWS from 'aws-sdk';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
-import { fetchTokenForInstallation } from '../github';
-import generateGitHubToken from '../auth/generateToken';
+import { fetchTokenForInstallation } from '../github/queries';
+import generateGitHubToken from '../github/auth';
 import { isSnsEvent, isApiGatewayEvent } from '../util/lambdaEvent';
 
 // Upgrade an installation

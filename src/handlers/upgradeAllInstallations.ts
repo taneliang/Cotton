@@ -4,8 +4,8 @@ import * as AWS from 'aws-sdk';
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 
-import { fetchInstallationIds } from '../github';
-import generateGitHubToken from '../auth/generateToken';
+import { fetchInstallationIds } from '../github/queries';
+import generateGitHubToken from '../github/auth';
 
 import * as bluebird from 'bluebird';
 global.Promise = bluebird;
