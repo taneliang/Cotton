@@ -67,6 +67,21 @@ describe(handleIssueCommentCreated, () => {
     await expect(handleIssueCommentCreated(samplePayload)).resolves.toBeUndefined();
   });
 
+  test('should ignore closed PRs', async () => {
+    // A closed, but otherwise valid PR
+    const samplePayload = {
+      ...issuecommentCreatedPrPayload,
+      comment: { body: '/upgrade' },
+      issue: {
+        ...issuecommentCreatedPrPayload.issue,
+        state: 'closed',
+      },
+    };
+
+    // If this test fails, there may be strange errors caused by the mocked AWS SNS module.
+    await expect(handleIssueCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
   test('should handle comments with supported commands', async () => {
     const samplePayload = {
       ...issuecommentCreatedPrPayload,
@@ -167,6 +182,25 @@ describe(handlePrReviewCommentCreated, () => {
         position: 5,
       },
     };
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
+  test('should ignore closed PRs', async () => {
+    // A closed, but otherwise valid PR
+    const samplePayload = {
+      ...prreviewcommentCreatedPayload,
+      comment: {
+        body: '/discard',
+        diff_hunk:
+          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
+        position: 5,
+      },
+      pull_request: {
+        ...prreviewcommentCreatedPayload.pull_request,
+        state: 'closed',
+      },
+    };
+
     await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
   });
 

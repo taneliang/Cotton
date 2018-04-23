@@ -42,6 +42,9 @@ export async function handleIssueCommentCreated(payload: any) {
   )
     return;
 
+  // Only handle open PRs
+  if (payload.issue.state !== 'open') return;
+
   // Abort if no installation - we need installation to upgrade
   if (!payload.installation) return;
 
@@ -107,6 +110,9 @@ export async function handlePrReviewCommentCreated(payload: any) {
 
   // Only handle our upgrade PR
   if (payload.pull_request.head.ref !== cottonBranch) return;
+
+  // Only handle open PRs
+  if (payload.pull_request.state !== 'open') return;
 
   // Abort if no installation - we need installation to upgrade
   if (!payload.installation) return;
