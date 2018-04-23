@@ -145,7 +145,9 @@ describe(handlePrReviewCommentCreated, () => {
     const samplePayload = {
       ...prreviewcommentCreatedPayload,
       pull_request: {
+        ...prreviewcommentCreatedPayload.pull_request,
         head: {
+          ...prreviewcommentCreatedPayload.pull_request.head,
           ref: 'cotton/notcotton',
         },
       },
@@ -163,10 +165,8 @@ describe(handlePrReviewCommentCreated, () => {
     const samplePayload = {
       ...prreviewcommentCreatedPayload,
       comment: {
+        ...prreviewcommentCreatedPayload.comment,
         body: 'no slash commands/has invalid commands',
-        diff_hunk:
-          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
-        position: 5,
       },
     };
     await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
@@ -176,10 +176,8 @@ describe(handlePrReviewCommentCreated, () => {
     const samplePayload = {
       ...prreviewcommentCreatedPayload,
       comment: {
+        ...prreviewcommentCreatedPayload.comment,
         body: '/badbot',
-        diff_hunk:
-          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
-        position: 5,
       },
     };
     await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
@@ -190,10 +188,8 @@ describe(handlePrReviewCommentCreated, () => {
     const samplePayload = {
       ...prreviewcommentCreatedPayload,
       comment: {
+        ...prreviewcommentCreatedPayload.comment,
         body: '/discard',
-        diff_hunk:
-          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
-        position: 5,
       },
       pull_request: {
         ...prreviewcommentCreatedPayload.pull_request,
@@ -204,14 +200,25 @@ describe(handlePrReviewCommentCreated, () => {
     await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
   });
 
+  test('should ignore comments on non-package.json files', async () => {
+    const samplePayload = {
+      ...prreviewcommentCreatedPayload,
+      comment: {
+        ...prreviewcommentCreatedPayload.comment,
+        body: '/discard',
+        path: 'CapScam/Package.json',
+      },
+    };
+
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
   test('should handle comments with supported commands', async () => {
     const samplePayload = {
       ...prreviewcommentCreatedPayload,
       comment: {
+        ...prreviewcommentCreatedPayload.comment,
         body: '/discard',
-        diff_hunk:
-          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
-        position: 5,
       },
     };
 

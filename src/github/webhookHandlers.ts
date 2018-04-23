@@ -1,3 +1,4 @@
+import { basename } from 'path';
 import { promisify } from 'util';
 import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
@@ -128,8 +129,12 @@ export async function handlePrReviewCommentCreated(payload: any) {
   // Perform slash commands
   const discardCommands = ['discard', 'ignore', 'undo', 'nah'];
   if (_.intersection(commands, discardCommands).length > 0) {
+    const { diff_hunk: diffHunk, position, path: repoPath } = payload.comment;
+
+    // Ignore comments that are not on a package.json file
+    if (basename(repoPath) !== 'package.json') return;
+
     // Identify package name
-    const { diff_hunk: diffHunk, position } = payload.comment;
     const packageToDiscard = packageFromDiffHunk(diffHunk, position);
     if (!packageToDiscard) return;
 
