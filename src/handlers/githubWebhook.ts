@@ -1,6 +1,6 @@
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import { verifyWebhookEvent } from '../github/auth';
-import { handleIssueCommentCreated } from '../github/webhookHandlers';
+import { handleIssueCommentCreated, handlePrReviewCommentCreated } from '../github/webhookHandlers';
 
 async function handleEvent(eventType: string, payload: { [key: string]: any }) {
   const action: string | undefined = payload.action;
@@ -24,7 +24,9 @@ async function handleEvent(eventType: string, payload: { [key: string]: any }) {
 
   switch (eventAction(eventType, action)) {
     case eventAction('issue_comment', 'created'):
-      return await handleIssueCommentCreated(payload);
+      return handleIssueCommentCreated(payload);
+    case eventAction('pull_request_review_comment', 'created'):
+      return handlePrReviewCommentCreated(payload);
     default:
       console.log('Unsupported event', eventType, action || '');
       break;

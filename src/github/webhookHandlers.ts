@@ -31,31 +31,32 @@ async function invokeUpgradeRepo(installationId: string, repoDetails: RepoDetail
 
 export async function handleIssueCommentCreated(payload: any) {
   // Only handle pull requests
-  if (!payload.issue || !payload.issue.pull_request) return;
+  if (!payload.issue || !payload.issue.pull_request) return undefined;
 
   // Only handle PR creations
-  if (payload.action !== 'created') return;
+  if (payload.action !== 'created') return undefined;
 
   // Only handle our upgrade PR
   if (
     payload.issue.user.login !== 'cotton[bot]' ||
     payload.issue.user.html_url !== 'https://github.com/apps/cotton'
-  )
-    return;
+  ) {
+    return undefined;
+  }
 
   // Only handle open PRs
-  if (payload.issue.state !== 'open') return;
+  if (payload.issue.state !== 'open') return undefined;
 
   // Abort if no installation - we need installation to upgrade
-  if (!payload.installation) return;
+  if (!payload.installation) return undefined;
 
   // Abort if no body - weird input
-  if (!payload.comment.body) return;
+  if (!payload.comment.body) return undefined;
 
   // Abort if no slash command - definitely not meant for us
   const body = payload.comment.body;
   const commands = slashCommands(body);
-  if (!commands) return;
+  if (!commands) return undefined;
 
   // Perform slash commands
   const upgradeCommands = ['upgrade', 'reupgrade', 'update'];
@@ -75,14 +76,14 @@ export async function handleIssueCommentCreated(payload: any) {
 export function packageFromDiffHunk(diffHunk: string, position: number) {
   const lines = diffHunk.split('\n');
   let line = lines[position];
-  if (!line) return;
+  if (!line) return undefined;
 
   // Assume line is in the form '+    "react": "^16.3.0",', possibly without
   // the trailing comma (if it's the last dep), and possibly prefixed with a
   // '-' instead if the line was removed.
 
   // Ignore (i.e. return undefined) for lines without a +/- prefix.
-  if (line.substr(0, 1) !== '+' && line.substr(0, 1) !== '-') return;
+  if (line.substr(0, 1) !== '+' && line.substr(0, 1) !== '-') return undefined;
   line = line.substr(1);
 
   // Extract the package name "react" by trimming whitespace from the line,
@@ -95,36 +96,36 @@ export function packageFromDiffHunk(diffHunk: string, position: number) {
   // Parse JSON string
   try {
     const obj = JSON.parse(line);
-    if (!_.isPlainObject(obj)) return; // Abort if JSON is not an object
+    if (!_.isPlainObject(obj)) return undefined; // Abort if JSON is not an object
     return Object.keys(obj)[0]; // Return first key in object
   } catch (e) {
-    return;
+    return undefined;
   }
 }
 
 export async function handlePrReviewCommentCreated(payload: any) {
   // Only handle comment creations
-  if (payload.action !== 'created') return;
+  if (payload.action !== 'created') return undefined;
 
   // Only handle PRs and comments
-  if (!payload.pull_request || !payload.comment) return;
+  if (!payload.pull_request || !payload.comment) return undefined;
 
   // Only handle our upgrade PR
-  if (payload.pull_request.head.ref !== cottonBranch) return;
+  if (payload.pull_request.head.ref !== cottonBranch) return undefined;
 
   // Only handle open PRs
-  if (payload.pull_request.state !== 'open') return;
+  if (payload.pull_request.state !== 'open') return undefined;
 
   // Abort if no installation - we need installation to upgrade
-  if (!payload.installation) return;
+  if (!payload.installation) return undefined;
 
   // Abort if no body - weird input
   const body = payload.comment.body;
-  if (!body) return;
+  if (!body) return undefined;
 
   // Abort if no slash command - definitely not meant for us
   const commands = slashCommands(body);
-  if (!commands) return;
+  if (!commands) return undefined;
 
   // Perform slash commands
   const discardCommands = ['discard', 'ignore', 'undo', 'nah'];
@@ -132,11 +133,11 @@ export async function handlePrReviewCommentCreated(payload: any) {
     const { diff_hunk: diffHunk, position, path: repoPath } = payload.comment;
 
     // Ignore comments that are not on a package.json file
-    if (basename(repoPath) !== 'package.json') return;
+    if (basename(repoPath) !== 'package.json') return undefined;
 
     // Identify package name
     const packageToDiscard = packageFromDiffHunk(diffHunk, position);
-    if (!packageToDiscard) return;
+    if (!packageToDiscard) return undefined;
 
     // TODO: Modify PR description to include this package
 
