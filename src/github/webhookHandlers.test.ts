@@ -1,9 +1,15 @@
-import { slashCommands, handleIssueCommentCreated } from './webhookHandlers';
+import {
+  slashCommands,
+  handleIssueCommentCreated,
+  handlePrReviewCommentCreated,
+  packageFromDiffHunk,
+} from './webhookHandlers';
 
 jest.mock('aws-sdk');
 const AWS = require('aws-sdk');
 
 const issuecommentCreatedPrPayload = require('./__mocks__/ghwh.issuecomment.created.pr.json');
+const prreviewcommentCreatedPayload = require('./__mocks__/ghwh.prreviewcomment.created.json');
 
 describe(slashCommands, () => {
   test('should match valid slash commands', () => {
@@ -74,9 +80,120 @@ describe(handleIssueCommentCreated, () => {
   });
 });
 
+describe(packageFromDiffHunk, () => {
+  test('should return correct value for diff from GitHub', () => {
+    const diffHunk =
+      '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"';
+    expect(packageFromDiffHunk(diffHunk, 4)).toEqual('react'); // - line
+    expect(packageFromDiffHunk(diffHunk, 5)).toEqual('react'); // + line
+  });
+
+  const splitHunks = [
+    '@@ -4,9 +4,9 @@',
+    '   "main": "index.js",',
+    '   "license": "MIT",',
+    '-  "Dependencies": {',
+    '+  "dependencies": {',
+    '     "unchanged": "1.2.3",',
+    '-    "react": "16.2.0",',
+    '-    "webpack": "4.0.0"',
+    '+    "react": "16.3.2",',
+    '+    "webpack": "4.5.0"',
+  ];
+
+  test('should return deps on lines with and without trailing commas', () => {
+    const diffHunk = splitHunks.join('\n');
+    expect(packageFromDiffHunk(diffHunk, 6)).toEqual('react'); // With comma
+    expect(packageFromDiffHunk(diffHunk, 7)).toEqual('webpack'); // Without comma
+  });
+
+  test('should return deps on lines with + xor - prefixes', () => {
+    const diffHunk = splitHunks.join('\n');
+    expect(packageFromDiffHunk(diffHunk, 6)).toEqual('react'); // - react, comma
+    expect(packageFromDiffHunk(diffHunk, 9)).toEqual('webpack'); // + webpack, no comma
+  });
+
+  test('should return undefined for unchanged deps', () => {
+    const diffHunk = splitHunks.join('\n');
+    expect(packageFromDiffHunk(diffHunk, 5)).toBeUndefined(); // "unchanged"
+  });
+
+  test('should return undefined for clearly non-dep lines', () => {
+    const diffHunk = splitHunks.join('\n');
+    // '"dependencies": {' line should cause JSON.parse to throw
+    expect(packageFromDiffHunk(diffHunk, 4)).toBeUndefined(); // "dependencies"
+  });
+});
+
+describe(handlePrReviewCommentCreated, () => {
+  test('should ignore PRs not by us', async () => {
+    const samplePayload = {
+      ...prreviewcommentCreatedPayload,
+      pull_request: {
+        head: {
+          ref: 'cotton/notcotton',
+        },
+      },
+    };
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
+  test('should ignore payloads without installation', async () => {
+    const samplePayload = { ...prreviewcommentCreatedPayload };
+    delete samplePayload.installation;
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
+  test('should ignore comments without slash command', async () => {
+    const samplePayload = {
+      ...prreviewcommentCreatedPayload,
+      comment: {
+        body: 'no slash commands/has invalid commands',
+        diff_hunk:
+          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
+        position: 5,
+      },
+    };
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
+  test('should ignore comments with unsupported commands', async () => {
+    const samplePayload = {
+      ...prreviewcommentCreatedPayload,
+      comment: {
+        body: '/badbot',
+        diff_hunk:
+          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
+        position: 5,
+      },
+    };
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toBeUndefined();
+  });
+
+  test('should handle comments with supported commands', async () => {
+    const samplePayload = {
+      ...prreviewcommentCreatedPayload,
+      comment: {
+        body: '/discard',
+        diff_hunk:
+          '@@ -4,9 +4,9 @@\n   "main": "index.js",\n   "license": "MIT",\n   "dependencies": {\n-    "react": "16.2.0"\n+    "react": "16.3.2"',
+        position: 5,
+      },
+    };
+
+    const publish = jest.fn().mockImplementation((params: any, callback: Function) => callback());
+    AWS.SNS.mockImplementation(() => ({ publish }));
+    await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toMatchObject({
+      commands: ['discard'],
+      packageToDiscard: 'react',
+    });
+    expect(publish).toHaveBeenCalled();
+  });
+});
+
 describe('webhooks should ignore other events', () => {
   // Sample webhook payloads for use in tests
-  const samplePayloads = [issuecommentCreatedPrPayload];
+  const samplePayloads = [issuecommentCreatedPrPayload, prreviewcommentCreatedPayload];
 
   // Tests webhook handler, expecting it to return a falsy value for every payload
   // except the ones in passingIndices.
@@ -93,4 +210,5 @@ describe('webhooks should ignore other events', () => {
   }
 
   testWebhookIdentification([0], handleIssueCommentCreated);
+  testWebhookIdentification([1], handlePrReviewCommentCreated);
 });
