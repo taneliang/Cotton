@@ -9,11 +9,12 @@ const upgradeSummary = {
   'proj/1': {
     dependencies: { ...upgradedOne, ...upgradedTwo },
     peerDependencies: { ...upgradedTwo },
+    ignored: ['hydrogen', 'helium'],
   },
 };
 
 describe(prHumanReadableBody, () => {
-  test('should include relevant information', () => {
+  test('should include all relevant information', () => {
     const body = prHumanReadableBody(upgradeSummary);
 
     expect(body).toContain('proj/1'); // Include project name
@@ -24,6 +25,8 @@ describe(prHumanReadableBody, () => {
     expect(body).toContain('two');
     expect(body).toContain('0.1.0'); // Include package versions
     expect(body).toContain('0.1.1');
+    expect(body).toContain('hydrogen'); // Include ignored packages
+    expect(body).toContain('helium');
   });
 });
 

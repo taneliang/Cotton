@@ -5,7 +5,13 @@ each projSummary, project in upgradeSummary
     summary=project
     ul
       each depTypeSummary, depKey in projSummary
-        li=depKey
-          ul
-            each depSummary, depName in depTypeSummary
-              li=depName + ": " + depSummary.original + " → " + depSummary.upgraded
+        if depKey === 'ignored'
+          li Ignored packages
+            ul
+              each depName in depTypeSummary
+                li=depName
+        else
+          li=depKey
+            ul
+              each depSummary, depName in depTypeSummary
+                li=depName + ": " + depSummary.original + " → " + depSummary.upgraded
