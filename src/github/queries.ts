@@ -1,6 +1,7 @@
 import * as Octokit from '@octokit/rest';
 import { cottonBranch } from '../config';
 import { writeFileAsync, PathPair } from '../util/files';
+import { getPrMetadata } from '../util/pr';
 
 import * as bluebird from 'bluebird';
 global.Promise = bluebird;
@@ -35,7 +36,8 @@ export async function fetchLastPRData(owner: string, repo: string, octokit: Octo
   }
 
   const { number: id, body } = allPrs.data[0];
-  // TODO: Extract PR body metadata
+  // Extract PR body metadata
+  const metadata = getPrMetadata(body || '');
 
   // Check if foreign commits are present
   const commits = await octokit.pullRequests.getCommits({ owner, repo, number: id });
@@ -44,7 +46,7 @@ export async function fetchLastPRData(owner: string, repo: string, octokit: Octo
     .filter((author: string) => author !== 'cotton[bot]'); // TODO: Replace magic const
   const foreignCommitsPresent = authors.length > 0;
 
-  return { id, body, foreignCommitsPresent };
+  return { id, body, metadata, foreignCommitsPresent };
 }
 
 // Fetch all files in owner/repo and save to disk

@@ -65,6 +65,7 @@ export function diffDependencies(oldPackage: PackageJson, newPackage: PackageJso
 
 // Upgrade project at rootDir (which must contain a package.json and yarn.lock).
 // If packages were updated, returns an upgrade diff object, else returns null.
+// TODO: Accept an array of packages to ignore
 export async function upgradeProject(rootDir: string) {
   const packageJsonPath = join(rootDir, 'package.json');
   const readPackageJson = async () => {
@@ -75,7 +76,8 @@ export async function upgradeProject(rootDir: string) {
   // Read package.json
   const oldPackage = await readPackageJson();
 
-  // TODO: Manually undo previous package upgrade
+  // TODO: Manually undo previous package upgrade. May not be necessary if
+  // we're always upgrading from the package on master.
 
   // Upgrade packages
   // TODO: Ensure that custom packages are ignored
@@ -99,6 +101,8 @@ export async function upgradeProject(rootDir: string) {
 
   // Run yarn to update yarn.lock
   await execAsync('yarn install --ignore-scripts', { cwd: rootDir });
+
+  // TODO: Add ignored packages to upgradeDiff
 
   // Return diff
   return upgradeDiff;

@@ -34,6 +34,10 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
     return null;
   }
 
+  const prevUpgradeSummary: RepoDiff | undefined = prData && prData.metadata.upgradeSummary;
+
+  // TODO: Build ignored package list from prev summary and newly ignored packages
+
   // Get paths to all package.json and yarn.lock files
   const query = (filename: string) => `filename:${filename} repo:${repoFullName}`;
   const [packageJsons, yarnLocks] = await Promise.all([
@@ -63,8 +67,9 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
   await fetchFiles(owner, repo, filePaths, octokit);
 
   // Upgrade projects
-  const upgradeDiffs = await Promise.map(projDirPaths, (projDir: PathPair) =>
-    upgradeProject(projDir.localPath),
+  const upgradeDiffs = await Promise.map(
+    projDirPaths,
+    (projDir: PathPair) => upgradeProject(projDir.localPath), // TODO: Pass in ignored
   );
   // Zip project dirs and upgrade diffs, then
   // remove projects in this repo that weren't upgraded
@@ -72,7 +77,9 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
     _.zipObject(projDirPaths.map((path: PathPair) => path.repoPath), upgradeDiffs),
   ) as RepoDiff;
 
-  // Abort if nothing was upgraded
+  // Abort if nothing was upgraded (i.e. everything up-to-date, or all upgrades
+  // have been discarded)
+  // TODO: Handle ignored key in upgradeSummary
   if (Object.keys(upgradeSummary).length === 0) {
     console.log('Nothing to upgrade for', repoFullName);
     // TODO: Close open PR if present
