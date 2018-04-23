@@ -3,7 +3,7 @@ import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambd
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import * as uuid from 'uuid/v4';
-import { upgradeProject, PackageDiff } from '../upgrade';
+import { upgradeProject, RepoDiff } from '../upgrade';
 import { fetchTokenForInstallation, fetchLastPRData, fetchFiles } from '../github/queries';
 import { commitFiles, createOrUpdatePR } from '../github/mutations';
 import { generateGitHubToken } from '../github/auth';
@@ -70,7 +70,7 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
   // remove projects in this repo that weren't upgraded
   const upgradeSummary = _.pickBy(
     _.zipObject(projDirPaths.map((path: PathPair) => path.repoPath), upgradeDiffs),
-  ) as { [index: string]: PackageDiff };
+  ) as RepoDiff;
 
   // Abort if nothing was upgraded
   if (Object.keys(upgradeSummary).length === 0) {

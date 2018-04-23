@@ -18,7 +18,14 @@ type PackageJson = {
 type Dependencies = { readonly [index: string]: string };
 
 export type DependencyDiff = { [index: string]: { original: string; upgraded: string } };
-export type PackageDiff = { [index: string]: DependencyDiff };
+export type PackageDiff = {
+  dependencies?: DependencyDiff;
+  devDependencies?: DependencyDiff;
+  peerDependencies?: DependencyDiff;
+  optionalDependencies?: DependencyDiff;
+  ignored?: string[];
+};
+export type RepoDiff = { [repoRoot: string]: PackageDiff };
 
 export const execAsync = promisify(exec);
 

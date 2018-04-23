@@ -1,6 +1,6 @@
 import * as Octokit from '@octokit/rest';
 import { cottonBranch } from '../config';
-import { PackageDiff } from '../upgrade';
+import { RepoDiff } from '../upgrade';
 import { PR_TITLE, prBody } from '../util/pr';
 import { readFileAsync, PathPair } from '../util/files';
 import { fetchBranchData } from './queries';
@@ -82,7 +82,7 @@ export async function commitFiles(
 export function createOrUpdatePR(
   owner: string,
   repo: string,
-  upgradeSummary: { [index: string]: PackageDiff },
+  upgradeSummary: RepoDiff,
   prData: any | null,
   octokit: Octokit,
 ) {
