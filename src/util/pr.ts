@@ -16,9 +16,14 @@ export function prHumanReadableBody(upgradeSummary: RepoDiff) {
 // Create human readable body + metadata string
 export function prBody(upgradeSummary: RepoDiff) {
   const humanString = prHumanDescFunction({ upgradeSummary });
-  return setMetadata(humanString, UPGRADE_SUMMARY_METADATA_KEY, upgradeSummary);
+  return setPrMetadata(humanString, upgradeSummary);
 }
 
 export function getPrMetadata(prBodyString: string) {
   return { upgradeSummary: getMetadata(prBodyString, UPGRADE_SUMMARY_METADATA_KEY) };
+}
+
+// Set PR metadata on a PR body
+export function setPrMetadata(prBodyString: string, upgradeSummary: RepoDiff) {
+  return setMetadata(prBodyString, UPGRADE_SUMMARY_METADATA_KEY, upgradeSummary);
 }

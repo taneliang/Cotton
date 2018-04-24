@@ -104,6 +104,8 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
     return null;
   }
 
+  // TODO: Would be nice to abort commit if description has been updated again
+
   // Commit files
   const commitSha = await commitFiles(owner, repo, filePaths, octokit);
 

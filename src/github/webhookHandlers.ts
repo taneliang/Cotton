@@ -1,9 +1,13 @@
-import { basename } from 'path';
+import { basename, dirname } from 'path';
 import { promisify } from 'util';
 import * as AWS from 'aws-sdk';
+import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import { cottonBranch } from '../config';
 import { RepoDetails } from '../handlers/upgradeRepository';
+import { fetchTokenForInstallation } from '../github/queries';
+import { generateGitHubToken } from '../github/auth';
+import { getPrMetadata, setPrMetadata } from '../util/pr';
 
 // Returns an array of lowercased slash commands, or null if no slash commands found.
 export function slashCommands(str: string) {
@@ -130,25 +134,48 @@ export async function handlePrReviewCommentCreated(payload: any) {
   // Perform slash commands
   const discardCommands = ['discard', 'ignore', 'undo', 'nah'];
   if (_.intersection(commands, discardCommands).length > 0) {
-    const { diff_hunk: diffHunk, position, path: repoPath } = payload.comment;
+    const { diff_hunk: diffHunk, position, path: filePath } = payload.comment;
 
     // Ignore comments that are not on a package.json file
-    if (basename(repoPath) !== 'package.json') return undefined;
+    if (basename(filePath) !== 'package.json') return undefined;
+    const repoPath = dirname(filePath);
 
     // Identify package name
     const packageToDiscard = packageFromDiffHunk(diffHunk, position);
     if (!packageToDiscard) return undefined;
 
-    // TODO: Modify PR description to include this package
-
-    // TODO: Repo upgrade lambda to abort commit if description has been updated again
-
-    // Invoke upgrade lambda
     const installationId = payload.installation.id;
     const repoDetails = {
       owner: payload.repository.owner.login,
       repo: payload.repository.name,
     };
+
+    // Modify PR description to include this package
+
+    // Add packageToDiscard to upgradeSummary
+    const upgradeSummary = getPrMetadata(payload.pull_request.body).upgradeSummary || {};
+    const newSummary = _.update(
+      upgradeSummary,
+      [repoPath, 'ignored'],
+      // Ensure ignored array exists
+      (ignoredArray: any | undefined) => ignoredArray || [],
+    );
+    newSummary[repoPath].ignored.push(packageToDiscard);
+    newSummary[repoPath].ignored = _.uniq(newSummary[repoPath].ignored);
+
+    // Initialize octokit and authenticate for this installation
+    const octokit = new Octokit();
+    octokit.authenticate({ type: 'integration', token: generateGitHubToken() });
+    const token = await fetchTokenForInstallation(installationId, octokit);
+    octokit.authenticate({ type: 'token', token });
+
+    await octokit.pullRequests.update({
+      ...repoDetails,
+      number: payload.pull_request.number,
+      body: setPrMetadata(body, upgradeSummary),
+    });
+
+    // Invoke upgrade lambda
     await invokeUpgradeRepo(installationId, repoDetails);
     return { commands, packageToDiscard, installationId, repoDetails };
   }

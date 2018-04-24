@@ -6,7 +6,11 @@ import {
 } from './webhookHandlers';
 
 jest.mock('aws-sdk');
+jest.mock('@octokit/rest');
+jest.mock('../github/queries');
 const AWS = require('aws-sdk');
+const Octokit = require('@octokit/rest');
+const { fetchTokenForInstallation } = require('../github/queries');
 
 const issuecommentCreatedPrPayload = require('./__mocks__/ghwh.issuecomment.created.pr.json');
 const prreviewcommentCreatedPayload = require('./__mocks__/ghwh.prreviewcomment.created.json');
@@ -141,6 +145,10 @@ describe(packageFromDiffHunk, () => {
 });
 
 describe(handlePrReviewCommentCreated, () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   test('should ignore PRs not by us', async () => {
     const samplePayload = {
       ...prreviewcommentCreatedPayload,
@@ -224,11 +232,21 @@ describe(handlePrReviewCommentCreated, () => {
 
     const publish = jest.fn().mockImplementation((params: any, callback: Function) => callback());
     AWS.SNS.mockImplementation(() => ({ publish }));
+
+    const update = jest.fn();
+    Octokit.mockImplementation(() => ({
+      authenticate: jest.fn(),
+      pullRequests: { update },
+    }));
+
+    fetchTokenForInstallation.mockResolvedValue('token');
+
     await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toMatchObject({
       commands: ['discard'],
       packageToDiscard: 'react',
     });
     expect(publish).toHaveBeenCalled();
+    expect(update).toHaveBeenCalled();
   });
 });
 

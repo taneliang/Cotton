@@ -83,7 +83,7 @@ export function createOrUpdatePR(
   owner: string,
   repo: string,
   upgradeSummary: RepoDiff,
-  prData: any | null,
+  prData: { id: number } | null,
   octokit: Octokit,
 ) {
   const commonPrOpts = { owner, repo, body: prBody(upgradeSummary) };

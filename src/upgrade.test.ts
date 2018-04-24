@@ -106,7 +106,7 @@ describe(upgradeProject, () => {
     expect(upgradeResult).toEqual({}); // Return empty obj if no upgrades possible
 
     // Same behavior with empty array of packages to ignore
-    expect(upgradeProject('.', [])).resolves.toEqual(upgradeResult);
+    await expect(upgradeProject('.', [])).resolves.toEqual(upgradeResult);
 
     expect(writeFileAsync).not.toHaveBeenCalled(); // Don't write if there aren't any changes
     expect(exec).not.toHaveBeenCalled(); // Don't run yarn if nothing was upgraded
