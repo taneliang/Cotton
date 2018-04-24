@@ -1,5 +1,7 @@
-import { generateGitHubToken } from './auth';
+import { generateGitHubToken, signRequestBody, verifyWebhookEvent } from './auth';
+import { APIGatewayEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
+import * as _ from 'lodash';
 
 jest.mock('fs');
 const { readFileSync } = require('fs');
@@ -35,5 +37,67 @@ describe(generateGitHubToken, () => {
     // GitHub requirement.
     const decoded = jwt.decode(token, { complete: true });
     expect(decoded).toMatchObject({ header: { alg: 'RS256' } });
+  });
+});
+
+describe(signRequestBody, () => {
+  test('should return null if body does not exist', () => {
+    expect(signRequestBody('key', null)).toBe(null);
+  });
+
+  test('should return signed body', () => {
+    expect(signRequestBody('key', 'body')).toMatchSnapshot();
+  });
+});
+
+describe(verifyWebhookEvent, () => {
+  beforeEach(() => {
+    process.env.GITHUB_WEBHOOK_SECRET = '';
+  });
+
+  afterEach(() => {
+    delete process.env.GITHUB_WEBHOOK_SECRET;
+  });
+
+  const validEvent: APIGatewayEvent = {
+    body: '',
+    headers: {
+      'X-Hub-Signature': 'sig',
+      'X-GitHub-Event': 'event',
+      'X-GitHub-Delivery': 'delivery',
+    },
+  } as any;
+
+  function expectValidError(event: APIGatewayEvent) {
+    const error = verifyWebhookEvent(event);
+    expect(error).toBeDefined();
+    expect(Object.keys(error || {})).toEqual(['statusCode', 'body']);
+  }
+
+  test('should return error when webhook secret is not set', () => {
+    delete process.env.GITHUB_WEBHOOK_SECRET;
+    expectValidError(validEvent);
+  });
+
+  function testMissingHeader(header: string) {
+    test(`should return error when ${header} header is not set`, () => {
+      const event = _.cloneDeep(validEvent);
+      delete event.headers[header];
+      expectValidError(event);
+    });
+  }
+
+  testMissingHeader('X-Hub-Signature');
+  testMissingHeader('X-GitHub-Event');
+  testMissingHeader('X-GitHub-Delivery');
+
+  test('should return error when signature is invalid', () => {
+    // Signature set doesn't match signature calculated by signRequestBody
+    expectValidError(validEvent);
+  });
+
+  test.skip('should return null when webhook event is valid', () => {
+    // TODO: Mock signRequestBody somehow to get past that last signature check
+    expect(verifyWebhookEvent(validEvent)).toBe(null);
   });
 });

@@ -1,0 +1,3 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`signRequestBody should return signed body 1`] = `"sha1=70bbf6819d1037aa94ca7e7f537cbea25fe49283"`;

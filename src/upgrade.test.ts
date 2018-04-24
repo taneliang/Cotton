@@ -112,7 +112,7 @@ describe(upgradeProject, () => {
     expect(exec).not.toHaveBeenCalled(); // Don't run yarn if nothing was upgraded
   });
 
-  test.only('should not write or run yarn if no deps were upgraded and packages were ignored', async () => {
+  test('should not write or run yarn if no deps were upgraded and packages were ignored', async () => {
     // Mock situation
     // i.e. package.json and ncu-upgraded package have the same deps
     // Although upgrades should be possible, ncu will return the original

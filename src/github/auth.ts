@@ -27,7 +27,7 @@ export function generateGitHubToken() {
   return jwt.sign(payload, cert, options);
 }
 
-function signRequestBody(key: string, body: string | null) {
+export function signRequestBody(key: string, body: string | null) {
   if (!body) return null;
   return `sha1=${createHmac('sha1', key)
     .update(body, 'utf8')
