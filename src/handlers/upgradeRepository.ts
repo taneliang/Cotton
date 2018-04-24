@@ -3,7 +3,7 @@ import { APIGatewayEvent, SNSEvent, Callback, Context, Handler } from 'aws-lambd
 import * as Octokit from '@octokit/rest';
 import * as _ from 'lodash';
 import * as uuid from 'uuid/v4';
-import { upgradeProject, RepoDiff } from '../upgrade';
+import { upgradeProject, RepoDiff, PackageDiff } from '../upgrade';
 import { fetchTokenForInstallation, fetchLastPRData, fetchFiles } from '../github/queries';
 import { commitFiles, createOrUpdatePR } from '../github/mutations';
 import { generateGitHubToken } from '../github/auth';
@@ -34,9 +34,16 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
     return null;
   }
 
+  // Build ignored package list from prev summary
   const prevUpgradeSummary: RepoDiff | undefined = prData && prData.metadata.upgradeSummary;
-
-  // TODO: Build ignored package list from prev summary and newly ignored packages
+  const packagesToIgnore: { [repoRoot: string]: string[] } = _.mapValues(
+    prevUpgradeSummary,
+    (packageDiff: PackageDiff) => packageDiff.ignored || [],
+  );
+  console.log(prevUpgradeSummary);
+  console.log(
+    `Ignoring packages while upgrading ${repoFullName}: ${JSON.stringify(packagesToIgnore)}`,
+  );
 
   // Get paths to all package.json and yarn.lock files
   const query = (filename: string) => `filename:${filename} repo:${repoFullName}`;
@@ -67,20 +74,31 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
   await fetchFiles(owner, repo, filePaths, octokit);
 
   // Upgrade projects
-  const upgradeDiffs = await Promise.map(
-    projDirPaths,
-    (projDir: PathPair) => upgradeProject(projDir.localPath), // TODO: Pass in ignored
+  const upgradeDiffs = await Promise.map(projDirPaths, (projDir: PathPair) =>
+    upgradeProject(projDir.localPath, packagesToIgnore[projDir.repoPath]),
   );
   // Zip project dirs and upgrade diffs, then
   // remove projects in this repo that weren't upgraded
   const upgradeSummary = _.pickBy(
     _.zipObject(projDirPaths.map((path: PathPair) => path.repoPath), upgradeDiffs),
+    _.negate(_.isEmpty), // Prune empty diffs - projs with nothing to upgrade, and nothing ignored
   ) as RepoDiff;
 
-  // Abort if nothing was upgraded (i.e. everything up-to-date, or all upgrades
-  // have been discarded)
-  // TODO: Handle ignored key in upgradeSummary
-  if (Object.keys(upgradeSummary).length === 0) {
+  // 3 states:
+  // 1. >= 1 projects have updates.
+  //    upgradeSummary.length > 0. Commit files and crupdate PR.
+  // 2. No projects have pending updates, and all projects have no ignored updates.
+  //    upgradeSummary.length = 0. Close open PR if present and return.
+  // 3. No projects have pending updates, and >=1 projects have ignored updates.
+  //    upgradeSummary.length > 0. Close open PR if present and return.
+
+  // All done if nothing was upgraded. (i.e. everything up-to-date, or all
+  // upgrades have been discarded)
+  const numProjectsWithUpgrades = Object.values(upgradeSummary).filter(
+    (packageDiff: PackageDiff) => _.difference(Object.keys(packageDiff), ['ignored']).length > 0,
+  ).length;
+
+  if (numProjectsWithUpgrades === 0) {
     console.log('Nothing to upgrade for', repoFullName);
     // TODO: Close open PR if present
     return null;

@@ -15,9 +15,9 @@ type PackageJson = {
   optionalDependencies?: Dependencies;
 };
 
-type Dependencies = { readonly [index: string]: string };
+type Dependencies = { readonly [depName: string]: string };
 
-export type DependencyDiff = { [index: string]: { original: string; upgraded: string } };
+export type DependencyDiff = { [depName: string]: { original: string; upgraded: string } };
 export type PackageDiff = {
   dependencies?: DependencyDiff;
   devDependencies?: DependencyDiff;
@@ -66,12 +66,20 @@ export function diffDependencies(oldPackage: PackageJson, newPackage: PackageJso
 // Upgrade project at rootDir (which must contain a package.json and yarn.lock).
 // If packages were updated, returns an upgrade diff object, else returns null.
 // TODO: Accept an array of packages to ignore
-export async function upgradeProject(rootDir: string) {
+export async function upgradeProject(
+  rootDir: string,
+  packagesToIgnore: string[] | undefined,
+): Promise<PackageDiff> {
   const packageJsonPath = join(rootDir, 'package.json');
   const readPackageJson = async () => {
     const packageJson = await readFileAsync(packageJsonPath, 'utf-8');
     return JSON.parse(packageJson) as PackageJson;
   };
+
+  // packagesToIgnore should only exist if there are packages to be ignored
+  if (packagesToIgnore && packagesToIgnore.length <= 0) {
+    packagesToIgnore = undefined;
+  }
 
   // Read package.json
   const oldPackage = await readPackageJson();
@@ -87,23 +95,25 @@ export async function upgradeProject(rootDir: string) {
     silent: true,
     jsonAll: true,
     upgradeAll: true,
+    reject: packagesToIgnore && packagesToIgnore.join(','),
   });
 
   // Calculate diff
   const upgradeDiff = diffDependencies(oldPackage, upgradedPackage);
 
-  // Abort if nothing was upgraded
-  if (_.isEmpty(upgradeDiff)) return null;
+  // Write files and update lockfiles if packages were updated
+  if (!_.isEmpty(upgradeDiff)) {
+    // Save new package.json
+    // TODO: Preserve formatting (only replace necessary bits? Prettier?)
+    await writeFileAsync(packageJsonPath, JSON.stringify(upgradedPackage, null, 2) + '\n', 'utf-8');
 
-  // Save new package.json
-  // TODO: Preserve formatting (only replace necessary bits? Prettier?)
-  await writeFileAsync(packageJsonPath, JSON.stringify(upgradedPackage, null, 2) + '\n', 'utf-8');
+    // Run yarn to update yarn.lock
+    await execAsync('yarn install --ignore-scripts', { cwd: rootDir });
+  }
 
-  // Run yarn to update yarn.lock
-  await execAsync('yarn install --ignore-scripts', { cwd: rootDir });
-
-  // TODO: Add ignored packages to upgradeDiff
-
-  // Return diff
+  // Add ignored packages to diff and return
+  if (packagesToIgnore) {
+    upgradeDiff.ignored = packagesToIgnore;
+  }
   return upgradeDiff;
 }

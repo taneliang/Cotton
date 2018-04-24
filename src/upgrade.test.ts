@@ -79,7 +79,7 @@ describe(upgradeProject, () => {
   });
 
   test('should write package.json and run yarn if deps were upgraded', async () => {
-    // Mock situation
+    // Mock situation where upgrades are possible
     const { oldPkg, newPkg, diff } = upgradedDepsAndOptDeps;
     readFileAsync.mockResolvedValue(JSON.stringify(oldPkg));
     run.mockResolvedValue(newPkg);
@@ -88,22 +88,46 @@ describe(upgradeProject, () => {
     writeFileAsync.mockResolvedValue();
     exec.mockImplementation((cmd, opt, callback) => callback());
 
-    const upgradeResult = await upgradeProject('.');
+    const upgradeResult = await upgradeProject('.', undefined);
 
     expect(upgradeResult).toEqual(diff);
     expect(writeFileAsync).toHaveBeenCalledTimes(1); // Write package.json if there were changes
     expect(exec).toHaveBeenCalledTimes(1); // Run yarn to update yarn.lock
   });
 
-  test('should not write or run yarn if no deps were upgraded', async () => {
+  test('should not write or run yarn if no deps were upgraded and no packages ignored', async () => {
     // Mock situation
     // i.e. package.json and ncu-upgraded package have the same deps
     readFileAsync.mockResolvedValue(JSON.stringify(unchangedPkg));
     run.mockResolvedValue(unchangedPkg);
 
-    const upgradeResult = await upgradeProject('.');
+    // Upgrade project, ignoring nothing
+    const upgradeResult = await upgradeProject('.', undefined);
+    expect(upgradeResult).toEqual({}); // Return empty obj if no upgrades possible
 
-    expect(upgradeResult).toBe(null); // Return null if no upgrades to be made
+    // Same behavior with empty array of packages to ignore
+    expect(upgradeProject('.', [])).resolves.toEqual(upgradeResult);
+
+    expect(writeFileAsync).not.toHaveBeenCalled(); // Don't write if there aren't any changes
+    expect(exec).not.toHaveBeenCalled(); // Don't run yarn if nothing was upgraded
+  });
+
+  test.only('should not write or run yarn if no deps were upgraded and packages were ignored', async () => {
+    // Mock situation
+    // i.e. package.json and ncu-upgraded package have the same deps
+    // Although upgrades should be possible, ncu will return the original
+    // package since all possible upgrades were rejected.
+    readFileAsync.mockResolvedValue(JSON.stringify(unchangedPkg));
+    run.mockResolvedValue(unchangedPkg);
+
+    // Ignored array of packages. This array is only passed through to the
+    // return diff in this test, as ncu performs all the ignoring.
+    const ignored = ['upgraded1', 'upgraded4'];
+
+    // Upgrade project, ignoring everything
+    const upgradeResult = await upgradeProject('.', ignored);
+
+    expect(upgradeResult).toEqual({ ignored }); // Pass ignored array through to diff
     expect(writeFileAsync).not.toHaveBeenCalled(); // Don't write if there aren't any changes
     expect(exec).not.toHaveBeenCalled(); // Don't run yarn if nothing was upgraded
   });
