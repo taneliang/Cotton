@@ -26,14 +26,17 @@ export const upgradeAllInstallations: Handler = async (
     console.log('Upgrading installations:', installationIds);
     const sns = new AWS.SNS();
     const publishAsync = promisify(sns.publish);
-    const response = await Promise.map(installationIds, (instId: number) => {
+    await Promise.map(installationIds, (instId: number) => {
       return publishAsync.call(sns, {
         Message: instId.toString(),
         TopicArn: process.env.upgradeInstallationSnsArn,
       });
     });
 
-    return callback(null, response);
+    return callback(null, {
+      statusCode: 200,
+      body: JSON.stringify({ installationIds }),
+    });
   } catch (e) {
     return callback(e);
   }
