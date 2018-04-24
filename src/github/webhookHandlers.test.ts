@@ -7,10 +7,12 @@ import {
 
 jest.mock('aws-sdk');
 jest.mock('@octokit/rest');
-jest.mock('../github/queries');
+jest.mock('./auth');
+jest.mock('./queries');
 const AWS = require('aws-sdk');
 const Octokit = require('@octokit/rest');
-const { fetchTokenForInstallation } = require('../github/queries');
+const { generateGitHubToken } = require('./auth');
+const { fetchTokenForInstallation } = require('./queries');
 
 const issuecommentCreatedPrPayload = require('./__mocks__/ghwh.issuecomment.created.pr.json');
 const prreviewcommentCreatedPayload = require('./__mocks__/ghwh.prreviewcomment.created.json');
@@ -239,6 +241,7 @@ describe(handlePrReviewCommentCreated, () => {
       pullRequests: { update },
     }));
 
+    generateGitHubToken.mockReturnValue('token');
     fetchTokenForInstallation.mockResolvedValue('token');
 
     await expect(handlePrReviewCommentCreated(samplePayload)).resolves.toMatchObject({
