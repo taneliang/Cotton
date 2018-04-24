@@ -153,7 +153,8 @@ export async function handlePrReviewCommentCreated(payload: any) {
     // Modify PR description to include this package
 
     // Add packageToDiscard to upgradeSummary
-    const upgradeSummary = getPrMetadata(payload.pull_request.body).upgradeSummary || {};
+    const prBody = payload.pull_request.body;
+    const upgradeSummary = getPrMetadata(prBody).upgradeSummary || {};
     const newSummary = _.update(
       upgradeSummary,
       [repoPath, 'ignored'],
@@ -172,7 +173,7 @@ export async function handlePrReviewCommentCreated(payload: any) {
     await octokit.pullRequests.update({
       ...repoDetails,
       number: payload.pull_request.number,
-      body: setPrMetadata(body, upgradeSummary),
+      body: setPrMetadata(prBody, upgradeSummary),
     });
 
     // Invoke upgrade lambda

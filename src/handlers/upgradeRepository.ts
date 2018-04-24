@@ -100,7 +100,11 @@ async function upgrade(installationId: string, repoDetails: RepoDetails) {
 
   if (numProjectsWithUpgrades === 0) {
     console.log('Nothing to upgrade for', repoFullName);
-    // TODO: Close open PR if present
+    // Close open PR if present
+    if (prData) {
+      console.log(`Closing PR ${prData.id} in ${repoFullName}.`);
+      await octokit.pullRequests.update({ owner, repo, number: prData.id, state: 'closed' });
+    }
     return null;
   }
 
