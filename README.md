@@ -1,5 +1,9 @@
 # Cotton
 
+[![Build Status](https://travis-ci.org/taneliang/Cotton.svg?branch=master)](https://travis-ci.org/taneliang/Cotton)
+[![Maintainability](https://api.codeclimate.com/v1/badges/2bf75602f99c176b6456/maintainability)](https://codeclimate.com/github/taneliang/Cotton/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/2bf75602f99c176b6456/test_coverage)](https://codeclimate.com/github/taneliang/Cotton/test_coverage)
+
 Cotton is a serverless GitHub app which upgrades dependencies in projects which use Yarn. It is written in Node.js with the Serverless framework.
 
 ## Features
