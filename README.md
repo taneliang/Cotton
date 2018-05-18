@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/taneliang/Cotton.svg?branch=master)](https://travis-ci.org/taneliang/Cotton)
 [![Maintainability](https://api.codeclimate.com/v1/badges/2bf75602f99c176b6456/maintainability)](https://codeclimate.com/github/taneliang/Cotton/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/2bf75602f99c176b6456/test_coverage)](https://codeclimate.com/github/taneliang/Cotton/test_coverage)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ftaneliang%2FCotton.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Ftaneliang%2FCotton?ref=badge_shield)
 
 Cotton is a serverless GitHub app which upgrades dependencies in projects which use Yarn. It is written in Node.js with the Serverless framework.
 
@@ -54,3 +55,7 @@ Run `yarn start`. This starts a `serverless-offline` server, which simulates API
 ### Testing
 
 Run `yarn test`. Tests are written with Jest.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ftaneliang%2FCotton.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ftaneliang%2FCotton?ref=badge_large)
