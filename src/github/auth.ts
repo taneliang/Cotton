@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { createHmac } from 'crypto';
 import { APIGatewayEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
-import { gitHubAppId } from '../config';
+import { gitHubAppId, githubWebhookSecret } from '../config';
 
 function jwtDate(date: Date) {
   return Math.floor(date.getTime() / 1000);
@@ -10,6 +10,7 @@ function jwtDate(date: Date) {
 
 // Generate JWT for GitHub App.
 // Requires gh_priv_key.pem to be in repo root (i.e. ../..).
+// Requires GITHUB_APP_ID to be in .env
 // Token docs: https://developer.github.com/apps/building-github-apps/authentication-options-for-github-apps/#authenticating-as-a-github-app
 export function generateGitHubToken() {
   const cert = readFileSync('gh_priv_key.pem');
@@ -37,7 +38,7 @@ export function signRequestBody(key: string, body: string | null) {
 // Verifies authenticity of a webhook event.
 // https://developer.github.com/webhooks/#delivery-headers
 export function verifyWebhookEvent(event: APIGatewayEvent) {
-  const token = process.env.GITHUB_WEBHOOK_SECRET;
+  const token = githubWebhookSecret;
   if (typeof token !== 'string') {
     const errMsg = "Must provide a 'GITHUB_WEBHOOK_SECRET' env variable";
     return { statusCode: 401, body: errMsg };

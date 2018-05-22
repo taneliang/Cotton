@@ -29,28 +29,36 @@ Cotton is deployed on AWS using the Serverless framework. It is comprised of 3 l
 - `upgradeInstallation`: upgrades all repos in an installation by invoking `upgradeRepository` for each repo in the input installation. It can be invoked by the REST API endpoint `/upgradeInstallation/{installationID}`, or through an SNS message on the `upgradeInstallation` topic.
 - `upgradeRepository`: upgrades a repository. It can be invoked by the REST API endpoint `/upgradeRepository/{installationID}/{repoOwner}/{repoName}`, e.g. `/upgradeRepository/123456/taneliang/Cotton`, or through an SNS message on the `upgradeRepository` topic.
 
-## Development
+## Contributing
 
 ### Setup
 
 1. Clone this repo.
-2. Set up an AWS account if you haven't.
-3. Generate token.
-4. `cp .env.example .env`
-5. Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `.env`.
-6. Register a new GitHub App. Please enter a webhook secret as well.
-7. Generate and set a webhook secret for the new app, and set `GITHUB_WEBHOOK_SECRET` in `.env`.
-8. Generate and download a private key for the app.
-9. Copy the downloaded PEM encoded private key into the repo root. Rename it "gh_priv_key.pem".
+1. Run `cp .env.example .env` at the repo root.
+1. Set up an AWS account if you haven't.
+1. Generate `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, following https://serverless.com/framework/docs/providers/aws/guide/credentials/.
+1. Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `.env`.
+1. Register a new GitHub App, following https://developer.github.com/apps/building-github-apps/creating-a-github-app/. Use dummy urls as required. Permission settings are as followed:
+    - Repository contents: R&W
+    - Issues: R&W
+    - Repo metadata: R
+    - PRs: R&W
+    - Subscribe to events: Push, Issue comment, PR review, PR review comment
+1. Generate (securely, e.g. using a password manager) and set a webhook secret for the new app, and set `GITHUB_WEBHOOK_SECRET` in `.env`.
+1. Generate the private key following https://developer.github.com/apps/building-github-apps/authentication-options-for-github-apps/#generating-a-private-key.
+1. Download the key into the repo root and rename it "gh_priv_key.pem".
+1. Use the Github ID on the app settings page to set `GITHUB_APP_ID` in `.env`.
+1. Deploy the app by running `yarn deploy`.
+1. Once deployed, Serverless will output a few URLs. Set the GitHub App's Webhook URL to the githubWebhook POST endpoint by Serverless.
 
-### Deployment
-
-Run `yarn deploy`. This command uses serverless to deploy Cotton to AWS.
-
-### Dev
+### Development
 
 Run `yarn start`. This starts a `serverless-offline` server, which simulates API Gateway locally. Note that the `upgradeAllInstallations` and `upgradeInstallation` handlers will fail to trigger their downstream lambdas as `serverless-offline` does not mock SNS.
 
 ### Testing
 
 Run `yarn test`. Tests are written with Jest.
+
+### Deployment
+
+Run `yarn deploy`. This command uses serverless to deploy Cotton to AWS.
